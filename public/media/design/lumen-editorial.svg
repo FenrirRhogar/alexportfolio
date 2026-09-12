@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 1050" width="1400" height="1050">
+  <defs>
+    <filter id="grain-lumen-editorial">
+      <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="64" result="noise" />
+      <feColorMatrix in="noise" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.9 0" />
+    </filter>
+  </defs>
+  <rect width="1400" height="1050" fill="#f7f5f0" />
+  <path d="M 1621.7 344.7 Q 1543.8 556.4 1436.3 662.2 Q 1225.2 625.2 1118.8 677.1 Q 1024.9 699.3 824.3 639.3 Q 782.9 518.5 697.2 344.7 Q 713.9 225.7 793.1 19.0 Q 940.6 -91.6 1118.8 -148.9 Q 1318.7 -50.5 1500.2 -36.6 Q 1579.3 89.5 1621.7 344.7 Z" fill="#c1633d" opacity="0.42" style="mix-blend-mode:multiply" /><path d="M 829.2 259.8 Q 814.8 457.5 851.3 664.0 Q 614.5 730.9 447.2 656.3 Q 362.4 549.5 143.0 564.0 Q -5.0 367.4 -31.8 259.8 Q 16.4 103.2 187.6 0.3 Q 253.6 -74.7 447.2 -157.1 Q 569.2 -149.6 714.2 -7.2 Q 706.3 150.3 829.2 259.8 Z" fill="#d3a13b" opacity="0.34" style="mix-blend-mode:multiply" /><path d="M 1135.7 523.2 Q 1186.4 656.2 1137.9 821.7 Q 1042.7 842.4 839.4 863.5 Q 627.2 864.8 524.6 837.9 Q 476.1 722.4 395.0 523.2 Q 510.8 380.2 531.7 215.5 Q 718.2 270.8 839.4 227.0 Q 990.8 290.2 1048.9 313.6 Q 1136.7 470.3 1135.7 523.2 Z" fill="#8a3b2b" opacity="0.26" style="mix-blend-mode:multiply" />
+  <text x="50%" y="58%" text-anchor="middle" font-family="'Playfair Display', Georgia, serif" font-size="651" fill="rgba(31,28,25,0.10)" font-style="italic">L</text>
+  <rect width="1400" height="1050" filter="url(#grain-lumen-editorial)" opacity="0.06" />
+</svg>

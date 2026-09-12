@@ -1,0 +1,96 @@
+---
+import Layout from '../layouts/Layout.astro';
+import ProjectTile from '../components/ProjectTile.astro';
+import { getCollection } from 'astro:content';
+
+const design = (await getCollection('design')).filter((p) => p.data.featured);
+const motion = (await getCollection('motion')).filter((p) => p.data.featured);
+const fineart = (await getCollection('fineart')).filter((p) => p.data.featured);
+
+const featured = [
+  ...design.map((p) => ({
+    href: `/design/${p.id}/`,
+    image: p.data.cover,
+    title: p.data.title,
+    meta: `${p.data.category} — ${p.data.year}`,
+    discipline: 'Design',
+    order: p.data.order,
+  })),
+  ...motion.map((p) => ({
+    href: `/motion/${p.id}/`,
+    image: p.data.poster,
+    title: p.data.title,
+    meta: `${p.data.role ?? 'Edit'} — ${p.data.year}`,
+    discipline: 'Motion',
+    order: p.data.order,
+  })),
+  ...fineart.map((p) => ({
+    href: `/fine-art/${p.id}/`,
+    image: p.data.image,
+    title: p.data.title,
+    meta: `${p.data.medium} — ${p.data.year}`,
+    discipline: 'Fine Art',
+    order: p.data.order,
+  })),
+]
+  // interleave disciplines rather than blocking them, so the grid reads as curated, not sorted
+  .sort((a, b) => a.order - b.order)
+  .slice(0, 6);
+---
+
+<Layout title="Alex Rivera — Design, Motion & Fine Art">
+  <section class="min-h-[92vh] flex flex-col justify-end px-6 md:px-10 pb-16 pt-32">
+    <p class="fade-up text-sm uppercase tracking-[0.3em] text-ink-soft mb-6">
+      Designer — Editor — Painter
+    </p>
+    <h1 class="fade-up font-display text-[13vw] md:text-[7.5vw] leading-[0.95] tracking-tight max-w-6xl">
+      Hi, I'm Alex. I make things
+      <span class="italic text-terracotta">look</span>,
+      <span class="italic text-dusty">move</span>, and
+      <span class="italic text-sage">feel</span> like something.
+    </h1>
+    <p class="fade-up mt-8 max-w-xl text-ink-soft text-lg">
+      A one-person studio working across brand design, video editing, and painting —
+      based wherever the light is good that week.
+    </p>
+  </section>
+
+  <section class="px-6 md:px-10 pb-24">
+    <div class="relative aspect-video overflow-hidden rounded-sm">
+      <video
+        class="h-full w-full object-cover"
+        autoplay
+        muted
+        loop
+        playsinline
+        poster="/media/showreel-poster.svg"
+      >
+        <source src="/media/showreel.webm" type="video/webm" />
+        <source src="/media/showreel.mp4" type="video/mp4" />
+      </video>
+    </div>
+    <p class="mt-4 text-xs uppercase tracking-widest text-ink-soft">Showreel — 2025</p>
+  </section>
+
+  <section class="px-6 md:px-10 pb-32">
+    <div class="flex items-baseline justify-between mb-10">
+      <h2 class="font-display italic text-4xl md:text-5xl">Selected Work</h2>
+      <a href="/design/" data-cursor-hover class="link-hover text-sm uppercase tracking-widest text-ink-soft hidden md:block">
+        View everything
+      </a>
+    </div>
+
+    <div class="columns-1 sm:columns-2 lg:columns-3 gap-8">
+      {featured.map((p, i) => (
+        <ProjectTile
+          href={p.href}
+          image={p.image}
+          title={p.title}
+          meta={p.meta}
+          discipline={p.discipline}
+          class={i % 3 === 1 ? 'sm:mt-16' : ''}
+        />
+      ))}
+    </div>
+  </section>
+</Layout>

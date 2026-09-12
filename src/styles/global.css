@@ -1,0 +1,132 @@
+@import "tailwindcss";
+
+@theme {
+  --color-paper: #f7f5f0;
+  --color-paper-dim: #efece4;
+  --color-ink: #201c18;
+  --color-ink-soft: #4a453f;
+  --color-charcoal: #201f1d;
+  --color-charcoal-soft: #2a2825;
+
+  --color-terracotta: #c1633d;
+  --color-ochre: #d3a13b;
+  --color-sage: #7c8a6e;
+  --color-dusty: #5c7285;
+  --color-clay: #c98b7a;
+  --color-rust: #8a3b2b;
+
+  --font-display: "Instrument Serif", "Playfair Display", Georgia, serif;
+  --font-serif-alt: "Playfair Display", Georgia, serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+}
+
+@font-face {
+  font-family: "Instrument Serif";
+  src: local("Instrument Serif");
+  font-display: swap;
+}
+
+html {
+  scroll-behavior: smooth;
+  background: var(--color-paper);
+}
+
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  cursor: none;
+  transition: background-color 0.6s ease, color 0.6s ease;
+}
+
+/* Fine Art "gallery" theme: the page background subtly shifts to charcoal.
+   Overriding the theme custom properties on body cascades through every
+   bg-paper / text-ink utility, since Tailwind v4 emits those as var()s. */
+body.theme-dark {
+  --color-paper: var(--color-charcoal-soft);
+  --color-paper-dim: #302d29;
+  --color-ink: #f7f5f0;
+  --color-ink-soft: rgba(247, 245, 240, 0.65);
+}
+
+@media (pointer: coarse) {
+  body {
+    cursor: auto;
+  }
+}
+
+::selection {
+  background: var(--color-terracotta);
+  color: var(--color-paper);
+}
+
+/* ---- custom circular cursor ---- */
+#cursor-dot,
+#cursor-ring {
+  position: fixed;
+  top: 0;
+  left: 0;
+  border-radius: 9999px;
+  pointer-events: none;
+  z-index: 999;
+  transform: translate(-50%, -50%);
+  mix-blend-mode: difference;
+}
+
+#cursor-dot {
+  width: 6px;
+  height: 6px;
+  background: var(--color-paper);
+  transition: opacity 0.2s ease, transform 0.15s ease;
+}
+
+#cursor-ring {
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--color-paper);
+  transition: width 0.28s cubic-bezier(0.16, 1, 0.3, 1), height 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+    border-width 0.28s ease, opacity 0.2s ease, background-color 0.28s ease;
+}
+
+body.cursor-hover #cursor-ring {
+  width: 84px;
+  height: 84px;
+  background: color-mix(in srgb, var(--color-paper) 18%, transparent);
+  border-width: 0;
+}
+
+body.cursor-hover #cursor-dot {
+  opacity: 0;
+}
+
+body.cursor-hidden #cursor-dot,
+body.cursor-hidden #cursor-ring {
+  opacity: 0;
+}
+
+/* editorial underline-on-hover link treatment */
+.link-hover {
+  background-image: linear-gradient(currentColor, currentColor);
+  background-position: 0 100%;
+  background-repeat: no-repeat;
+  background-size: 0% 1px;
+  transition: background-size 0.4s cubic-bezier(0.65, 0, 0.35, 1);
+}
+.link-hover:hover {
+  background-size: 100% 1px;
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-up {
+  animation: fade-up 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
+}

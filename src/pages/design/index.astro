@@ -1,0 +1,30 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import ProjectTile from '../../components/ProjectTile.astro';
+import { getCollection } from 'astro:content';
+
+const projects = (await getCollection('design')).sort((a, b) => a.data.order - b.data.order);
+---
+
+<Layout title="Design & Branding — Alex Rivera" description="Brand identity, packaging, and editorial design case studies.">
+  <section class="px-6 md:px-10 pt-36 pb-16 max-w-4xl">
+    <p class="text-sm uppercase tracking-[0.3em] text-ink-soft mb-6">Design & Branding</p>
+    <h1 class="font-display italic text-5xl md:text-7xl leading-[0.95]">
+      Identity systems built to survive contact with reality.
+    </h1>
+  </section>
+
+  <section class="px-6 md:px-10 pb-32">
+    <div class="columns-1 sm:columns-2 gap-10">
+      {projects.map((p, i) => (
+        <ProjectTile
+          href={`/design/${p.id}/`}
+          image={p.data.cover}
+          title={p.data.title}
+          meta={`${p.data.category} — ${p.data.year}`}
+          class={i % 2 === 1 ? 'sm:mt-24' : ''}
+        />
+      ))}
+    </div>
+  </section>
+</Layout>

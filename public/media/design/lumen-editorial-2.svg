@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 1750" width="1400" height="1750">
+  <defs>
+    <filter id="grain-lumen-editorial-2">
+      <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="96" result="noise" />
+      <feColorMatrix in="noise" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.9 0" />
+    </filter>
+  </defs>
+  <rect width="1400" height="1750" fill="#f7f5f0" />
+  <path d="M 1207.2 621.3 Q 1087.6 824.9 1108.5 940.8 Q 927.0 1000.9 727.1 1175.9 Q 629.0 911.2 506.3 788.6 Q 416.0 544.3 327.7 368.0 Q 575.6 332.2 753.7 183.1 Q 925.7 162.5 1150.8 248.8 Q 1217.8 382.1 1207.2 621.3 Z" fill="#c1633d" opacity="0.42" style="mix-blend-mode:multiply" /><path d="M 944.5 991.8 Q 863.5 1124.5 770.3 1258.5 Q 578.9 1312.2 440.6 1504.3 Q 283.3 1303.5 155.4 1185.5 Q 90.6 952.7 148.6 794.9 Q 276.7 657.5 479.5 649.8 Q 698.6 552.6 876.7 591.7 Q 869.7 803.2 944.5 991.8 Z" fill="#d3a13b" opacity="0.34" style="mix-blend-mode:multiply" /><path d="M 947.6 607.3 Q 851.1 828.6 703.6 899.0 Q 515.2 974.5 454.8 1168.2 Q 338.2 1083.3 76.2 1091.7 Q -111.0 924.3 -152.1 792.2 Q -62.5 685.8 -15.9 472.0 Q 24.9 361.6 76.5 123.4 Q 316.5 85.1 455.5 42.5 Q 617.8 154.6 654.1 357.1 Q 754.4 484.8 947.6 607.3 Z" fill="#8a3b2b" opacity="0.26" style="mix-blend-mode:multiply" />
+  <text x="50%" y="58%" text-anchor="middle" font-family="'Playfair Display', Georgia, serif" font-size="1085" fill="rgba(31,28,25,0.10)" font-style="italic">L</text>
+  <rect width="1400" height="1750" filter="url(#grain-lumen-editorial-2)" opacity="0.06" />
+</svg>

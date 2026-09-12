@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1920" width="1080" height="1920">
+  <defs>
+    <filter id="grain-currents-music-video">
+      <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="50" result="noise" />
+      <feColorMatrix in="noise" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.9 0" />
+    </filter>
+  </defs>
+  <rect width="1080" height="1920" fill="#f7f5f0" />
+  <path d="M 1079.5 1392.5 Q 990.3 1479.9 903.4 1668.8 Q 793.4 1721.1 599.9 1756.6 Q 451.7 1697.6 329.9 1562.5 Q 400.1 1358.5 393.7 1253.2 Q 477.8 1142.4 589.0 980.5 Q 756.7 1002.1 929.0 1084.1 Q 980.6 1185.1 1079.5 1392.5 Z" fill="#5c7285" opacity="0.42" style="mix-blend-mode:multiply" /><path d="M 1029.9 606.3 Q 1054.8 671.1 998.1 827.8 Q 946.4 854.8 801.2 987.2 Q 692.5 921.7 556.2 914.3 Q 476.8 816.7 477.9 699.5 Q 476.0 660.1 482.8 514.8 Q 525.7 478.3 582.5 343.7 Q 637.1 339.8 798.0 243.7 Q 854.4 321.7 960.9 415.9 Q 958.9 532.1 1029.9 606.3 Z" fill="#7c8a6e" opacity="0.34" style="mix-blend-mode:multiply" /><path d="M 1099.2 646.0 Q 1082.3 825.1 1181.7 1034.4 Q 953.2 1038.3 807.3 1147.7 Q 623.4 1176.1 454.8 1103.3 Q 356.7 1005.3 185.5 840.1 Q 206.1 638.8 239.2 471.5 Q 387.6 309.3 461.9 201.1 Q 692.6 113.7 822.2 59.6 Q 902.5 249.0 1068.0 353.0 Q 1067.2 443.3 1099.2 646.0 Z" fill="#1f1c19" opacity="0.26" style="mix-blend-mode:multiply" />
+  <text x="50%" y="58%" text-anchor="middle" font-family="'Playfair Display', Georgia, serif" font-size="1190" fill="rgba(31,28,25,0.10)" font-style="italic">C</text>
+  <rect width="1080" height="1920" filter="url(#grain-currents-music-video)" opacity="0.06" />
+</svg>

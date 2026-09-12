@@ -1,0 +1,67 @@
+---
+interface Props {
+  href: string;
+  poster: string;
+  video: string;
+  videoWebm?: string;
+  title: string;
+  meta: string;
+  class?: string;
+}
+
+const { href, poster, video, videoWebm, title, meta, class: className = '' } = Astro.props;
+---
+
+<a
+  href={href}
+  data-cursor-hover
+  data-phone-tile
+  class:list={['group block', className]}
+>
+  <div class="relative aspect-9/16 overflow-hidden rounded-[1.75rem] bg-charcoal ring-1 ring-ink/10">
+    <video
+      class="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04]"
+      poster={poster}
+      muted
+      loop
+      playsinline
+      preload="none"
+    >
+      <source src={videoWebm} type="video/webm" />
+      <source src={video} type="video/mp4" />
+    </video>
+
+    <div class="pointer-events-none absolute inset-0 bg-gradient-to-t from-charcoal/80 via-transparent to-transparent"></div>
+
+    <div
+      class="pointer-events-none absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full border border-paper/50 text-paper opacity-90 transition-opacity group-hover:opacity-0"
+      aria-hidden="true"
+    >
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><path d="M1 0.5v11l10-5.5z"/></svg>
+    </div>
+
+    <div class="absolute inset-x-0 bottom-0 p-4 text-paper">
+      <h3 class="font-display italic text-xl leading-tight">{title}</h3>
+      <p class="text-xs uppercase tracking-widest text-paper/70 mt-1">{meta}</p>
+    </div>
+  </div>
+</a>
+
+<script>
+  function attachPhoneTiles() {
+    document.querySelectorAll('[data-phone-tile]').forEach((tile) => {
+      const video = tile.querySelector('video');
+      if (!video || video.dataset.bound) return;
+      video.dataset.bound = 'true';
+      tile.addEventListener('mouseenter', () => {
+        video.play().catch(() => {});
+      });
+      tile.addEventListener('mouseleave', () => {
+        video.pause();
+        video.currentTime = 0;
+      });
+    });
+  }
+  attachPhoneTiles();
+  document.addEventListener('astro:page-load', attachPhoneTiles);
+</script>

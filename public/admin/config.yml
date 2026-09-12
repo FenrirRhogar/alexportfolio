@@ -1,0 +1,102 @@
+## Decap CMS configuration
+##
+## This site is a static Astro build hosted on GitHub Pages, which cannot run
+## the OAuth handshake `backend: github` needs on its own. The standard,
+## zero-cost fix is to point `base_url` at a tiny OAuth-only site elsewhere
+## (a free Netlify site or a small Cloudflare Worker) — your main site keeps
+## living on GitHub Pages, that other host only ever handles the login step.
+## See: https://decapcms.org/docs/github-backend/
+##
+## Once that's deployed, fill in `repo` and `base_url` below. Until then,
+## `local_backend: true` lets you run the CMS against your local filesystem:
+##   1. npm run cms:proxy   (starts the decap-server proxy on :8081)
+##   2. npm run dev
+##   3. open http://localhost:4321/admin/
+backend:
+  name: github
+  repo: your-github-username/your-repo-name # e.g. arivera/portfolio
+  branch: main
+  base_url: https://your-oauth-provider.example.com
+  auth_endpoint: auth
+
+local_backend: true
+
+publish_mode: simple
+media_folder: "public/media/uploads"
+public_folder: "/media/uploads"
+
+collections:
+  - name: "design"
+    label: "Design & Branding"
+    label_singular: "Design Project"
+    folder: "src/content/design"
+    create: true
+    delete: true
+    slug: "{{slug}}"
+    media_folder: "/public/media/design"
+    public_folder: "/media/design"
+    summary: "{{title}} — {{category}} ({{year}})"
+    fields:
+      - { label: "Title", name: "title", widget: "string" }
+      - { label: "Client", name: "client", widget: "string", required: false }
+      - { label: "Year", name: "year", widget: "string" }
+      - label: "Category"
+        name: "category"
+        widget: "select"
+        options: ["Brand Identity", "Packaging & Identity", "Editorial Design", "Print", "Digital"]
+      - { label: "Summary", name: "summary", widget: "text", hint: "One or two sentences, used in previews and SEO." }
+      - { label: "Cover Image", name: "cover", widget: "image" }
+      - { label: "Gallery", name: "gallery", widget: "list", field: { label: "Image", name: "image", widget: "image" }, required: false }
+      - { label: "Tags", name: "tags", widget: "list", field: { label: "Tag", name: "tag", widget: "string" }, required: false }
+      - { label: "Feature on homepage", name: "featured", widget: "boolean", default: false }
+      - { label: "Sort order", name: "order", widget: "number", default: 99, hint: "Lower numbers appear first." }
+      - { label: "Case Study", name: "body", widget: "markdown" }
+
+  - name: "motion"
+    label: "Motion & Video"
+    label_singular: "Video Edit"
+    folder: "src/content/motion"
+    create: true
+    delete: true
+    slug: "{{slug}}"
+    media_folder: "/public/media/motion"
+    public_folder: "/media/motion"
+    summary: "{{title}} — {{year}}"
+    fields:
+      - { label: "Title", name: "title", widget: "string" }
+      - { label: "Role", name: "role", widget: "string", required: false, hint: "e.g. Editor, Colorist" }
+      - { label: "Year", name: "year", widget: "string" }
+      - { label: "Summary", name: "summary", widget: "text" }
+      - { label: "Poster Image", name: "poster", widget: "image", hint: "Still shown before the video plays." }
+      - { label: "Video (MP4)", name: "video", widget: "file" }
+      - { label: "Video (WebM)", name: "videoWebm", widget: "file", required: false, hint: "Optional, smaller alternate format." }
+      - { label: "Vertical (9:16)", name: "vertical", widget: "boolean", default: true }
+      - { label: "Feature on homepage", name: "featured", widget: "boolean", default: false }
+      - { label: "Sort order", name: "order", widget: "number", default: 99 }
+      - { label: "Notes", name: "body", widget: "markdown", required: false }
+
+  - name: "fineart"
+    label: "Fine Art"
+    label_singular: "Artwork"
+    folder: "src/content/fineart"
+    create: true
+    delete: true
+    slug: "{{slug}}"
+    media_folder: "/public/media/fineart"
+    public_folder: "/media/fineart"
+    summary: "{{title}} — {{medium}} ({{year}})"
+    fields:
+      - { label: "Title", name: "title", widget: "string" }
+      - { label: "Medium", name: "medium", widget: "string", hint: "e.g. Oil on canvas" }
+      - { label: "Dimensions", name: "dimensions", widget: "string", required: false }
+      - { label: "Year", name: "year", widget: "string" }
+      - label: "Status"
+        name: "status"
+        widget: "select"
+        options: ["Available", "Sold", "Private Collection", "Not for Sale"]
+        required: false
+      - { label: "Summary", name: "summary", widget: "text", required: false }
+      - { label: "Image", name: "image", widget: "image" }
+      - { label: "Feature on homepage", name: "featured", widget: "boolean", default: false }
+      - { label: "Sort order", name: "order", widget: "number", default: 99 }
+      - { label: "Notes", name: "body", widget: "markdown", required: false }

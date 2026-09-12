@@ -1,0 +1,62 @@
+---
+import Layout from '../layouts/Layout.astro';
+
+const skills = [
+  'Adobe Photoshop',
+  'Adobe Illustrator',
+  'Adobe InDesign',
+  'Premiere Pro',
+  'After Effects',
+  'DaVinci Resolve',
+  'Figma',
+  'Procreate',
+  'Oil & Acrylic',
+];
+---
+
+<Layout title="About — Alex Rivera" description="Designer, editor, and painter based wherever the light is good.">
+  <section class="px-6 md:px-10 pt-36 pb-32">
+    <div class="grid md:grid-cols-2 gap-12 md:gap-20 items-start max-w-6xl">
+      <div class="md:sticky md:top-32">
+        <div class="aspect-4/5 overflow-hidden bg-paper-dim max-w-md">
+          <img src="/media/about-photo.svg" alt="Alex Rivera in the studio" class="w-full h-full object-cover" />
+        </div>
+      </div>
+
+      <div>
+        <p class="text-sm uppercase tracking-[0.3em] text-ink-soft mb-6">About</p>
+        <h1 class="font-display italic text-4xl md:text-6xl leading-[0.95] mb-10">
+          Three disciplines, one pair of tired eyes.
+        </h1>
+
+        <div class="font-sans text-lg leading-relaxed text-ink-soft space-y-6 max-w-xl">
+          <p>
+            I'm Alex — a designer and editor by trade, and a painter by 6 a.m. habit. Most weeks
+            split roughly into thirds: building identity systems for small, stubborn brands;
+            cutting motion work that has to say something in fifteen seconds; and standing in
+            front of a canvas trying to remember what the light looked like.
+          </p>
+          <p>
+            I trained as a graphic designer, drifted into editing because someone needed a
+            deadline met, and never really left painting — it's the one discipline nobody's
+            paying me to rush. Somewhere in the overlap of all three is the actual style: a
+            preference for texture over polish, and for things that look handled.
+          </p>
+          <p>
+            Based wherever the light is good that week. Currently taking on select design and
+            motion projects — see <a href="/contact/" data-cursor-hover class="link-hover text-ink">Contact</a>.
+          </p>
+        </div>
+
+        <div class="mt-14">
+          <p class="text-sm uppercase tracking-[0.3em] text-ink-soft mb-5">Tools</p>
+          <ul class="flex flex-wrap gap-3">
+            {skills.map((s) => (
+              <li class="text-sm border border-ink/15 rounded-full px-4 py-2 text-ink-soft">{s}</li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+</Layout>
