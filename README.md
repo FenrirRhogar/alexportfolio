@@ -32,28 +32,28 @@ them out for real photography, footage, and paintings before shipping.
 
 ## Editing content with Decap CMS
 
-1. Visit `/admin` on the deployed site (or locally, see below).
-2. Decap CMS reads/writes the same Markdown files in `src/content/`, and uploads
-   media straight into the right `public/media/<category>/` folder.
-
-### Local CMS editing
-
-GitHub Pages can't host the OAuth handshake Decap's `github` backend needs, so for
-local editing use the bundled proxy instead:
+**This is the supported path right now — always edit locally, then push.**
+Do not try to log in at `/admin` on the deployed GitHub Pages site; that button
+is wired to `backend: github`, which needs an OAuth relay server that **is not
+set up** (see "Editing from the live site" below for why, and what it'd take).
 
 ```bash
-npm run cms:proxy   # starts decap-server on :8081
-npm run dev          # in a second terminal
+npm run cms:proxy   # terminal 1 — starts decap-server on :8081
+npm run dev          # terminal 2
 # open http://localhost:4321/admin/
 ```
 
-`local_backend: true` in `public/admin/config.yml` is what enables this.
+`local_backend: true` in `public/admin/config.yml` is what enables this — it
+routes the CMS through the local proxy instead of GitHub, so there's no OAuth
+step at all. Publishing in the CMS writes straight to the Markdown files in
+`src/content/` and drops uploads into `public/media/<category>/`. Once you're
+happy with the change, commit and push it like any other edit.
 
-### Production CMS editing (GitHub Pages)
+### Editing from the live site (optional, more setup)
 
-`backend: github` in `public/admin/config.yml` needs an OAuth provider — GitHub
-Pages only serves static files, so this can't live on the same host as the site.
-The standard zero-cost fix:
+If you want to add/edit projects from a browser without your laptop, the
+`github` backend needs an OAuth relay — GitHub Pages only serves static files,
+so that relay has to live somewhere else. The standard zero-cost fix:
 
 1. Deploy a tiny OAuth-only site (a free Netlify site works well, or a small
    Cloudflare Worker) following the [Decap CMS GitHub backend guide](https://decapcms.org/docs/github-backend/).
