@@ -1,4 +1,6 @@
 ---
+import { withBase } from '../lib/url';
+
 interface Props {
   href: string;
   poster: string;
@@ -13,7 +15,7 @@ const { href, poster, video, videoWebm, title, meta, class: className = '' } = A
 ---
 
 <a
-  href={href}
+  href={withBase(href)}
   data-cursor-hover
   data-phone-tile
   class:list={['group block', className]}
@@ -21,14 +23,14 @@ const { href, poster, video, videoWebm, title, meta, class: className = '' } = A
   <div class="relative aspect-9/16 overflow-hidden rounded-[1.75rem] bg-charcoal ring-1 ring-ink/10">
     <video
       class="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04]"
-      poster={poster}
+      poster={withBase(poster)}
       muted
       loop
       playsinline
       preload="none"
     >
-      <source src={videoWebm} type="video/webm" />
-      <source src={video} type="video/mp4" />
+      {videoWebm && <source src={withBase(videoWebm)} type="video/webm" />}
+      <source src={withBase(video)} type="video/mp4" />
     </video>
 
     <div class="pointer-events-none absolute inset-0 bg-gradient-to-t from-charcoal/80 via-transparent to-transparent"></div>

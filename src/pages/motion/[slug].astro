@@ -1,6 +1,7 @@
 ---
 import Layout from '../../layouts/Layout.astro';
 import { getCollection, render } from 'astro:content';
+import { withBase } from '../../lib/url';
 
 export async function getStaticPaths() {
   const projects = await getCollection('motion');
@@ -25,13 +26,13 @@ const { title, role, year, poster, video, videoWebm } = entry.data;
       <div class="relative aspect-9/16 overflow-hidden rounded-[1.75rem] bg-charcoal ring-1 ring-ink/10">
         <video
           class="h-full w-full object-cover"
-          poster={poster}
+          poster={withBase(poster)}
           controls
           loop
           playsinline
         >
-          <source src={videoWebm} type="video/webm" />
-          <source src={video} type="video/mp4" />
+          {videoWebm && <source src={withBase(videoWebm)} type="video/webm" />}
+          <source src={withBase(video)} type="video/mp4" />
         </video>
       </div>
     </div>
@@ -41,7 +42,7 @@ const { title, role, year, poster, video, videoWebm } = entry.data;
     </div>
 
     <div class="mt-16 text-center">
-      <a href="/motion/" data-cursor-hover class="link-hover text-sm uppercase tracking-widest text-ink-soft">
+      <a href={withBase('/motion/')} data-cursor-hover class="link-hover text-sm uppercase tracking-widest text-ink-soft">
         ← Back to Motion & Video
       </a>
     </div>

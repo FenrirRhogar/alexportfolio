@@ -14,7 +14,7 @@
 ##   3. open http://localhost:4321/admin/
 backend:
   name: github
-  repo: your-github-username/your-repo-name # e.g. arivera/portfolio
+  repo: FenrirRhogar/alexportfolio
   branch: main
   base_url: https://your-oauth-provider.example.com
   auth_endpoint: auth

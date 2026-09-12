@@ -1,6 +1,7 @@
 ---
 import Layout from '../../layouts/Layout.astro';
 import { getCollection, render } from 'astro:content';
+import { withBase } from '../../lib/url';
 
 export async function getStaticPaths() {
   const projects = await getCollection('design');
@@ -31,7 +32,7 @@ const { title, client, year, category, cover, gallery, tags } = entry.data;
     </header>
 
     <div class="mb-16">
-      <img src={cover} alt={title} class="w-full h-auto" />
+      <img src={withBase(cover)} alt={title} class="w-full h-auto" />
     </div>
 
     <div class="grid md:grid-cols-3 gap-16">
@@ -43,13 +44,13 @@ const { title, client, year, category, cover, gallery, tags } = entry.data;
     {gallery.length > 1 && (
       <div class="mt-20 columns-1 sm:columns-2 gap-8">
         {gallery.slice(1).map((img: string) => (
-          <img src={img} alt="" class="w-full h-auto mb-8 break-inside-avoid" />
+          <img src={withBase(img)} alt="" class="w-full h-auto mb-8 break-inside-avoid" />
         ))}
       </div>
     )}
 
     <div class="mt-24">
-      <a href="/design/" data-cursor-hover class="link-hover text-sm uppercase tracking-widest text-ink-soft">
+      <a href={withBase('/design/')} data-cursor-hover class="link-hover text-sm uppercase tracking-widest text-ink-soft">
         ← Back to Design & Branding
       </a>
     </div>

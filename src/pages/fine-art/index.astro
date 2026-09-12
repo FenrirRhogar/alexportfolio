@@ -1,6 +1,7 @@
 ---
 import Layout from '../../layouts/Layout.astro';
 import { getCollection } from 'astro:content';
+import { withBase } from '../../lib/url';
 
 const works = (await getCollection('fineart')).sort((a, b) => a.data.order - b.data.order);
 ---
@@ -21,13 +22,13 @@ const works = (await getCollection('fineart')).sort((a, b) => a.data.order - b.d
     <div class="columns-1 sm:columns-2 lg:columns-3 gap-10">
       {works.map((w, i) => (
         <a
-          href={`/fine-art/${w.id}/`}
+          href={withBase(`/fine-art/${w.id}/`)}
           data-cursor-hover
           class:list={['group block break-inside-avoid mb-10', i % 2 === 1 ? 'sm:mt-16' : '']}
         >
           <div class="overflow-hidden bg-paper-dim">
             <img
-              src={w.data.image}
+              src={withBase(w.data.image)}
               alt={w.data.title}
               loading="lazy"
               class="w-full h-auto object-cover transition-transform duration-700 ease-out group-hover:scale-[1.03]"

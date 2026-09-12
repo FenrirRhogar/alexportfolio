@@ -2,6 +2,7 @@
 import Layout from '../layouts/Layout.astro';
 import ProjectTile from '../components/ProjectTile.astro';
 import { getCollection } from 'astro:content';
+import { withBase } from '../lib/url';
 
 const design = (await getCollection('design')).filter((p) => p.data.featured);
 const motion = (await getCollection('motion')).filter((p) => p.data.featured);
@@ -63,10 +64,10 @@ const featured = [
         muted
         loop
         playsinline
-        poster="/media/showreel-poster.svg"
+        poster={withBase('/media/showreel-poster.svg')}
       >
-        <source src="/media/showreel.webm" type="video/webm" />
-        <source src="/media/showreel.mp4" type="video/mp4" />
+        <source src={withBase('/media/showreel.webm')} type="video/webm" />
+        <source src={withBase('/media/showreel.mp4')} type="video/mp4" />
       </video>
     </div>
     <p class="mt-4 text-xs uppercase tracking-widest text-ink-soft">Showreel — 2025</p>
@@ -75,7 +76,7 @@ const featured = [
   <section class="px-6 md:px-10 pb-32">
     <div class="flex items-baseline justify-between mb-10">
       <h2 class="font-display italic text-4xl md:text-5xl">Selected Work</h2>
-      <a href="/design/" data-cursor-hover class="link-hover text-sm uppercase tracking-widest text-ink-soft hidden md:block">
+      <a href={withBase('/design/')} data-cursor-hover class="link-hover text-sm uppercase tracking-widest text-ink-soft hidden md:block">
         View everything
       </a>
     </div>

@@ -1,4 +1,6 @@
 ---
+import { withBase } from '../lib/url';
+
 interface Props {
   href: string;
   image: string;
@@ -12,13 +14,13 @@ const { href, image, title, meta, discipline, class: className = '' } = Astro.pr
 ---
 
 <a
-  href={href}
+  href={withBase(href)}
   data-cursor-hover
   class:list={['group block break-inside-avoid mb-8 md:mb-12', className]}
 >
   <div class="overflow-hidden bg-paper-dim">
     <img
-      src={image}
+      src={withBase(image)}
       alt={title}
       loading="lazy"
       class="w-full h-auto object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04]"

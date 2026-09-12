@@ -1,5 +1,6 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import { withBase } from '../lib/url';
 
 const skills = [
   'Adobe Photoshop',
@@ -19,7 +20,7 @@ const skills = [
     <div class="grid md:grid-cols-2 gap-12 md:gap-20 items-start max-w-6xl">
       <div class="md:sticky md:top-32">
         <div class="aspect-4/5 overflow-hidden bg-paper-dim max-w-md">
-          <img src="/media/about-photo.svg" alt="Alex Rivera in the studio" class="w-full h-full object-cover" />
+          <img src={withBase('/media/about-photo.svg')} alt="Alex Rivera in the studio" class="w-full h-full object-cover" />
         </div>
       </div>
 
@@ -44,7 +45,7 @@ const skills = [
           </p>
           <p>
             Based wherever the light is good that week. Currently taking on select design and
-            motion projects — see <a href="/contact/" data-cursor-hover class="link-hover text-ink">Contact</a>.
+            motion projects — see <a href={withBase('/contact/')} data-cursor-hover class="link-hover text-ink">Contact</a>.
           </p>
         </div>
 
