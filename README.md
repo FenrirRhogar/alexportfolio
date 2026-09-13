@@ -40,7 +40,9 @@ set up** (see "Editing from the live site" below for why, and what it'd take).
 ```bash
 npm run cms:proxy   # terminal 1 — starts decap-server on :8081
 npm run dev          # terminal 2
-# open http://localhost:4321/admin/
+# open http://localhost:4321/admin/index.html
+# (the exact filename matters here — Astro's dev server, unlike a real static
+# host, won't resolve a bare /admin/ to index.html for you)
 ```
 
 `local_backend: true` in `public/admin/config.yml` is what enables this — it
