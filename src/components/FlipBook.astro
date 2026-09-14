@@ -7,13 +7,11 @@ interface Props {
   pages: string[];
   width: number;
   height: number;
-  pdf?: string;
   class?: string;
 }
 
-const { id, title, pages, width, height, pdf, class: className = '' } = Astro.props;
+const { id, title, pages, width, height, class: className = '' } = Astro.props;
 const pageData = pages.map(withBase);
-const pdfHref = pdf ? withBase(pdf) : undefined;
 ---
 
 <div class:list={['flipbook-wrap', className]} data-flipbook-wrap>
@@ -36,27 +34,19 @@ const pdfHref = pdf ? withBase(pdf) : undefined;
     <button type="button" data-flip-next data-cursor-hover class="link-hover disabled:opacity-30" aria-label="Next page">
       Next →
     </button>
-    {pdfHref && (
-      <a href={pdfHref} data-cursor-hover class="link-hover" download>
-        Download PDF
-      </a>
-    )}
   </div>
 </div>
 
 <style>
   .flipbook-wrap {
-    max-width: 46rem;
+    max-width: 42rem;
   }
   .flipbook {
     width: 100%;
-    max-height: 70vh;
+    max-height: 80vh;
   }
   .flipbook :global(.stf__parent) {
     margin: 0 auto;
-  }
-  .flipbook :global(.stf__item) {
-    background: var(--color-paper-dim);
   }
 </style>
 
@@ -68,40 +58,51 @@ const pdfHref = pdf ? withBase(pdf) : undefined;
       if (el.dataset.bound) return;
       el.dataset.bound = 'true';
 
-      const pages: string[] = JSON.parse(el.dataset.pages || '[]');
-      const width = Number(el.dataset.width);
-      const height = Number(el.dataset.height);
-      const wrap = el.closest('[data-flipbook-wrap]');
-      if (!wrap || pages.length === 0) return;
+      try {
+        const pages: string[] = JSON.parse(el.dataset.pages || '[]');
+        const width = Number(el.dataset.width);
+        const height = Number(el.dataset.height);
+        const wrap = el.closest('[data-flipbook-wrap]');
+        if (!wrap || pages.length === 0) return;
 
-      const pageFlip = new PageFlip(el, {
-        width,
-        height,
-        size: 'stretch',
-        minWidth: 220,
-        maxWidth: 1400,
-        minHeight: 200,
-        maxHeight: 1400,
-        maxShadowOpacity: 0.5,
-        showCover: true,
-        mobileScrollSupport: true,
-        usePortrait: false,
-      });
+        // showCover:false (the library default) makes page 1 pair
+        // immediately with page 2 as a spread, like every other spread —
+        // showCover:true isolates it as a lone "cover" with nothing to
+        // face, which renders as a blank page next to it.
+        const pageFlip = new PageFlip(el, {
+          width,
+          height,
+          size: 'stretch',
+          // kept low so the library's own portrait auto-fallback (which
+          // triggers below 2×minWidth and re-introduces a blank half-page
+          // for a single unpaired page) never kicks in at realistic
+          // container widths, mobile included
+          minWidth: 90,
+          maxWidth: 1400,
+          minHeight: 200,
+          maxHeight: 1400,
+          maxShadowOpacity: 0.5,
+          showCover: false,
+          mobileScrollSupport: true,
+        });
 
-      pageFlip.loadFromImages(pages);
+        pageFlip.loadFromImages(pages);
 
-      const counter = wrap.querySelector<HTMLElement>('[data-flip-counter]');
-      const prevBtn = wrap.querySelector<HTMLButtonElement>('[data-flip-prev]');
-      const nextBtn = wrap.querySelector<HTMLButtonElement>('[data-flip-next]');
+        const counter = wrap.querySelector<HTMLElement>('[data-flip-counter]');
+        const prevBtn = wrap.querySelector<HTMLButtonElement>('[data-flip-prev]');
+        const nextBtn = wrap.querySelector<HTMLButtonElement>('[data-flip-next]');
 
-      const updateCounter = () => {
-        if (counter) counter.textContent = `${pageFlip.getCurrentPageIndex() + 1} / ${pages.length}`;
-      };
-      pageFlip.on('flip', updateCounter);
-      updateCounter();
+        const updateCounter = () => {
+          if (counter) counter.textContent = `${pageFlip.getCurrentPageIndex() + 1} / ${pages.length}`;
+        };
+        pageFlip.on('flip', updateCounter);
+        updateCounter();
 
-      prevBtn?.addEventListener('click', () => pageFlip.flipPrev());
-      nextBtn?.addEventListener('click', () => pageFlip.flipNext());
+        prevBtn?.addEventListener('click', () => pageFlip.flipPrev());
+        nextBtn?.addEventListener('click', () => pageFlip.flipNext());
+      } catch (err) {
+        console.error('FlipBook failed to initialize', el.id, err);
+      }
     });
   }
 
