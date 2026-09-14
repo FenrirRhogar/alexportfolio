@@ -7,7 +7,7 @@ const works = (await getCollection('fineart')).sort((a, b) => a.data.order - b.d
 ---
 
 <Layout
-  title="Fine Art — Alex Rivera"
+  title="Fine Art — Alexandra Patsi"
   description="Paintings and studies."
   bodyClass="theme-dark"
 >
@@ -37,7 +37,7 @@ const works = (await getCollection('fineart')).sort((a, b) => a.data.order - b.d
           <div class="mt-4">
             <h3 class="font-display italic text-2xl">{w.data.title}</h3>
             <p class="text-sm text-ink-soft mt-1">
-              {w.data.medium} — {w.data.year}
+              {[w.data.medium, w.data.year].filter(Boolean).join(' — ')}
               {w.data.status && ` · ${w.data.status}`}
             </p>
           </div>

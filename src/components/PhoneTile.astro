@@ -8,19 +8,25 @@ interface Props {
   videoWebm?: string;
   title: string;
   meta: string;
+  vertical?: boolean;
   class?: string;
 }
 
-const { href, poster, video, videoWebm, title, meta, class: className = '' } = Astro.props;
+const { href, poster, video, videoWebm, title, meta, vertical = true, class: className = '' } = Astro.props;
 ---
 
 <a
   href={withBase(href)}
   data-cursor-hover
   data-phone-tile
-  class:list={['group block', className]}
+  class:list={['group block', vertical ? '' : 'col-span-2', className]}
 >
-  <div class="relative aspect-9/16 overflow-hidden rounded-[1.75rem] bg-charcoal ring-1 ring-ink/10">
+  <div
+    class:list={[
+      'relative overflow-hidden rounded-[1.25rem] bg-charcoal ring-1 ring-ink/10',
+      vertical ? 'aspect-9/16' : 'aspect-video',
+    ]}
+  >
     <video
       class="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04]"
       poster={withBase(poster)}

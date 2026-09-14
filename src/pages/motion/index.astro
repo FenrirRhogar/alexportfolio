@@ -6,7 +6,7 @@ import { getCollection } from 'astro:content';
 const projects = (await getCollection('motion')).sort((a, b) => a.data.order - b.data.order);
 ---
 
-<Layout title="Motion & Video — Alex Rivera" description="Short-form edits, teasers, and social cuts.">
+<Layout title="Motion & Video — Alexandra Patsi" description="Short-form edits, teasers, and social cuts.">
   <section class="px-6 md:px-10 pt-36 pb-16 max-w-4xl">
     <p class="text-sm uppercase tracking-[0.3em] text-ink-soft mb-6">Motion & Video</p>
     <h1 class="font-display italic text-5xl md:text-7xl leading-[0.95]">
@@ -23,8 +23,9 @@ const projects = (await getCollection('motion')).sort((a, b) => a.data.order - b
           video={p.data.video}
           videoWebm={p.data.videoWebm}
           title={p.data.title}
-          meta={`${p.data.role ?? 'Edit'} — ${p.data.year}`}
-          class={i % 3 === 1 ? 'sm:mt-10' : i % 4 === 3 ? 'lg:mt-20' : ''}
+          meta={[p.data.role ?? 'Edit', p.data.year].filter(Boolean).join(' — ')}
+          vertical={p.data.vertical}
+          class={p.data.vertical && i % 3 === 1 ? 'sm:mt-10' : p.data.vertical && i % 4 === 3 ? 'lg:mt-20' : ''}
         />
       ))}
     </div>
