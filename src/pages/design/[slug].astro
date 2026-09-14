@@ -1,5 +1,6 @@
 ---
 import Layout from '../../layouts/Layout.astro';
+import FlipBook from '../../components/FlipBook.astro';
 import { getCollection, render } from 'astro:content';
 import { withBase } from '../../lib/url';
 
@@ -10,7 +11,7 @@ export async function getStaticPaths() {
 
 const { entry } = Astro.props;
 const { Content } = await render(entry);
-const { title, client, year, category, cover, gallery, tags } = entry.data;
+const { title, client, year, category, cover, gallery, booklets, tags } = entry.data;
 const meta = [category, client, year].filter(Boolean).join(' — ');
 ---
 
@@ -40,10 +41,28 @@ const meta = [category, client, year].filter(Boolean).join(' — ');
       </div>
     </div>
 
-    {gallery.length > 1 && (
+    {gallery.length > 0 && (
       <div class="mt-20 columns-1 sm:columns-2 gap-8">
-        {gallery.slice(1).map((img: string) => (
+        {gallery.map((img: string) => (
           <img src={withBase(img)} alt="" class="w-full h-auto mb-8 break-inside-avoid" />
+        ))}
+      </div>
+    )}
+
+    {booklets.length > 0 && (
+      <div class="mt-20 space-y-20">
+        {booklets.map((b) => (
+          <div>
+            <p class="text-center text-sm uppercase tracking-widest text-ink-soft mb-6">{b.title}</p>
+            <FlipBook
+              id={`flipbook-${b.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}
+              title={b.title}
+              pages={b.pages}
+              width={b.width}
+              height={b.height}
+              pdf={b.pdf}
+            />
+          </div>
         ))}
       </div>
     )}

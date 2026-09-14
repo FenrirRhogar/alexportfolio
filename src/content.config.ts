@@ -11,6 +11,17 @@ const design = defineCollection({
     summary: z.string(),
     cover: z.string(),
     gallery: z.array(z.string()).default([]),
+    booklets: z
+      .array(
+        z.object({
+          title: z.string(),
+          pdf: z.string().optional(),
+          width: z.number(),
+          height: z.number(),
+          pages: z.array(z.string()),
+        }),
+      )
+      .default([]),
     tags: z.array(z.string()).default([]),
     featured: z.boolean().default(false),
     order: z.number().default(0),

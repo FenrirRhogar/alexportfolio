@@ -10,7 +10,8 @@
     "preview": "astro preview"
   },
   "dependencies": {
-    "astro": "^7.3.2"
+    "astro": "^7.3.2",
+    "page-flip": "^2.0.7"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",

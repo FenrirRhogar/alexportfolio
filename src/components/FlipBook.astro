@@ -1,0 +1,110 @@
+---
+import { withBase } from '../lib/url';
+
+interface Props {
+  id: string;
+  title: string;
+  pages: string[];
+  width: number;
+  height: number;
+  pdf?: string;
+  class?: string;
+}
+
+const { id, title, pages, width, height, pdf, class: className = '' } = Astro.props;
+const pageData = pages.map(withBase);
+const pdfHref = pdf ? withBase(pdf) : undefined;
+---
+
+<div class:list={['flipbook-wrap', className]} data-flipbook-wrap>
+  <div
+    id={id}
+    class="flipbook mx-auto"
+    style={`aspect-ratio: ${width * 2} / ${height}`}
+    data-flipbook
+    data-pages={JSON.stringify(pageData)}
+    data-width={width}
+    data-height={height}
+    aria-label={`${title} — page-flip viewer`}
+  ></div>
+
+  <div class="mt-5 flex items-center justify-center gap-6 text-sm uppercase tracking-widest text-ink-soft">
+    <button type="button" data-flip-prev data-cursor-hover class="link-hover disabled:opacity-30" aria-label="Previous page">
+      ← Prev
+    </button>
+    <span data-flip-counter class="text-xs tabular-nums">1 / {pages.length}</span>
+    <button type="button" data-flip-next data-cursor-hover class="link-hover disabled:opacity-30" aria-label="Next page">
+      Next →
+    </button>
+    {pdfHref && (
+      <a href={pdfHref} data-cursor-hover class="link-hover" download>
+        Download PDF
+      </a>
+    )}
+  </div>
+</div>
+
+<style>
+  .flipbook-wrap {
+    max-width: 46rem;
+  }
+  .flipbook {
+    width: 100%;
+    max-height: 70vh;
+  }
+  .flipbook :global(.stf__parent) {
+    margin: 0 auto;
+  }
+  .flipbook :global(.stf__item) {
+    background: var(--color-paper-dim);
+  }
+</style>
+
+<script>
+  import { PageFlip } from 'page-flip';
+
+  function initFlipbooks() {
+    document.querySelectorAll<HTMLElement>('[data-flipbook]').forEach((el) => {
+      if (el.dataset.bound) return;
+      el.dataset.bound = 'true';
+
+      const pages: string[] = JSON.parse(el.dataset.pages || '[]');
+      const width = Number(el.dataset.width);
+      const height = Number(el.dataset.height);
+      const wrap = el.closest('[data-flipbook-wrap]');
+      if (!wrap || pages.length === 0) return;
+
+      const pageFlip = new PageFlip(el, {
+        width,
+        height,
+        size: 'stretch',
+        minWidth: 220,
+        maxWidth: 1400,
+        minHeight: 200,
+        maxHeight: 1400,
+        maxShadowOpacity: 0.5,
+        showCover: true,
+        mobileScrollSupport: true,
+        usePortrait: false,
+      });
+
+      pageFlip.loadFromImages(pages);
+
+      const counter = wrap.querySelector<HTMLElement>('[data-flip-counter]');
+      const prevBtn = wrap.querySelector<HTMLButtonElement>('[data-flip-prev]');
+      const nextBtn = wrap.querySelector<HTMLButtonElement>('[data-flip-next]');
+
+      const updateCounter = () => {
+        if (counter) counter.textContent = `${pageFlip.getCurrentPageIndex() + 1} / ${pages.length}`;
+      };
+      pageFlip.on('flip', updateCounter);
+      updateCounter();
+
+      prevBtn?.addEventListener('click', () => pageFlip.flipPrev());
+      nextBtn?.addEventListener('click', () => pageFlip.flipNext());
+    });
+  }
+
+  initFlipbooks();
+  document.addEventListener('astro:page-load', initFlipbooks);
+</script>
