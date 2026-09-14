@@ -15,26 +15,16 @@ const pageData = pages.map(withBase);
 ---
 
 <div class:list={['flipbook-wrap mx-auto', className]} data-flipbook-wrap>
-  <div class="flipbook-stage relative mx-auto" data-mode="lone">
-    <img
-      data-flipbook-lone
-      data-cursor-hover
-      src={pageData[0]}
-      alt={title}
-      class="lone-page mx-auto"
-      style={`aspect-ratio: ${width} / ${height}`}
-    />
-    <div
-      id={id}
-      class="flipbook"
-      style={`aspect-ratio: ${width * 2} / ${height}; display: none;`}
-      data-flipbook
-      data-pages={JSON.stringify(pageData)}
-      data-width={width}
-      data-height={height}
-      aria-label={`${title} — page-flip viewer`}
-    ></div>
-  </div>
+  <div
+    id={id}
+    class="flipbook mx-auto"
+    style={`aspect-ratio: ${width * 2} / ${height}`}
+    data-flipbook
+    data-pages={JSON.stringify(pageData)}
+    data-width={width}
+    data-height={height}
+    aria-label={`${title} — page-flip viewer`}
+  ></div>
 
   <div class="mt-5 flex items-center justify-center gap-6 text-sm uppercase tracking-widest text-ink-soft">
     <button type="button" data-flip-prev data-cursor-hover class="link-hover disabled:opacity-30" aria-label="Previous page">
@@ -51,16 +41,9 @@ const pageData = pages.map(withBase);
   .flipbook-wrap {
     max-width: 60rem;
   }
-  .lone-page {
-    max-height: 80vh;
-    width: 50%;
-    display: block;
-    object-fit: contain;
-    cursor: pointer;
-  }
-  /* :global() throughout — the PageFlip library takes ownership of the
-     `.flipbook` element's internals, and the element ends up without
-     Astro's scope attribute, so a scoped selector would never match it. */
+  /* :global() — the PageFlip library takes ownership of this element's
+     internals and it ends up without Astro's scope attribute, so a
+     scoped selector here would never match it. */
   :global(.flipbook) {
     width: 100%;
     max-height: 80vh;
@@ -81,18 +64,12 @@ const pageData = pages.map(withBase);
       try {
         const pages: string[] = JSON.parse(el.dataset.pages || '[]');
         const wrap = el.closest('[data-flipbook-wrap]');
-        const stage = el.closest<HTMLElement>('.flipbook-stage');
-        const loneImg = stage?.querySelector<HTMLImageElement>('[data-flipbook-lone]');
-        if (!wrap || !stage || !loneImg || pages.length === 0) return;
+        if (!wrap || pages.length === 0) return;
 
-        // showCover:true shows the first page alone, like a real book cover
-        // — but the library's canvas is hard-cleared to white every frame
-        // and always reserves two page-slots server-side of its own math,
-        // so a lone page (nothing to pair with) always leaves a white
-        // "empty seat" beside it, no matter how the container is sized.
-        // Simplest reliable fix: show a plain <img> for any lone page
-        // (trivial to center, no library quirks) and only reveal the
-        // PageFlip canvas for genuine two-page spreads.
+        // showCover:false pairs page 1 with page 2 immediately, like every
+        // other spread — showCover:true isolates it as a lone cover with
+        // nothing to face, which the library renders as a blank page
+        // beside it (its canvas is unconditionally cleared to white).
         const pageFlip = new PageFlip(el, {
           width: Number(el.dataset.width),
           height: Number(el.dataset.height),
@@ -102,45 +79,11 @@ const pageData = pages.map(withBase);
           minHeight: 200,
           maxHeight: 1400,
           maxShadowOpacity: 0.5,
-          showCover: true,
+          showCover: false,
           mobileScrollSupport: true,
         });
 
-        const isLoneIndex = (index: number) =>
-          index === 0 || (index === pages.length - 1 && pages.length % 2 === 0);
-
-        const applyLayout = () => {
-          const index = pageFlip.getCurrentPageIndex();
-          const lone = isLoneIndex(index);
-          stage.dataset.mode = lone ? 'lone' : 'spread';
-          // the library sets its own inline `display` on this element,
-          // which beats any CSS class/attribute rule on specificity alone
-          // — so the toggle has to happen the same way, in JS, last
-          el.style.display = lone ? 'none' : 'block';
-          loneImg.style.display = lone ? 'block' : 'none';
-          if (lone) {
-            loneImg.src = pages[index];
-          } else {
-            // only measure/redraw the canvas while it's actually visible —
-            // getBlockWidth() reads 0 on a display:none element
-            pageFlip.getRender().update();
-          }
-        };
-
-        // clicking the lone page should turn it, same as clicking any real
-        // spread — forward from the cover, backward from a trailing lone
-        // last page (there's nothing to go forward to from there)
-        loneImg.addEventListener('click', () => {
-          if (pageFlip.getCurrentPageIndex() === pages.length - 1) {
-            pageFlip.flipPrev();
-          } else {
-            pageFlip.flipNext();
-          }
-        });
-
         pageFlip.loadFromImages(pages);
-        pageFlip.on('init', applyLayout);
-        pageFlip.on('flip', applyLayout);
 
         const counter = wrap.querySelector<HTMLElement>('[data-flip-counter]');
         const prevBtn = wrap.querySelector<HTMLButtonElement>('[data-flip-prev]');
