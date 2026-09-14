@@ -14,7 +14,7 @@ const { id, title, pages, width, height, class: className = '' } = Astro.props;
 const pageData = pages.map(withBase);
 ---
 
-<div class:list={['flipbook-wrap', className]} data-flipbook-wrap>
+<div class:list={['flipbook-wrap mx-auto', className]} data-flipbook-wrap>
   <div
     id={id}
     class="flipbook mx-auto"
@@ -39,7 +39,7 @@ const pageData = pages.map(withBase);
 
 <style>
   .flipbook-wrap {
-    max-width: 42rem;
+    max-width: 60rem;
   }
   .flipbook {
     width: 100%;
