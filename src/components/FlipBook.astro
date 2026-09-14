@@ -18,6 +18,7 @@ const pageData = pages.map(withBase);
   <div class="flipbook-stage relative mx-auto" data-mode="lone">
     <img
       data-flipbook-lone
+      data-cursor-hover
       src={pageData[0]}
       alt={title}
       class="lone-page mx-auto"
@@ -55,6 +56,7 @@ const pageData = pages.map(withBase);
     width: 50%;
     display: block;
     object-fit: contain;
+    cursor: pointer;
   }
   /* :global() throughout — the PageFlip library takes ownership of the
      `.flipbook` element's internals, and the element ends up without
@@ -124,6 +126,17 @@ const pageData = pages.map(withBase);
             pageFlip.getRender().update();
           }
         };
+
+        // clicking the lone page should turn it, same as clicking any real
+        // spread — forward from the cover, backward from a trailing lone
+        // last page (there's nothing to go forward to from there)
+        loneImg.addEventListener('click', () => {
+          if (pageFlip.getCurrentPageIndex() === pages.length - 1) {
+            pageFlip.flipPrev();
+          } else {
+            pageFlip.flipNext();
+          }
+        });
 
         pageFlip.loadFromImages(pages);
         pageFlip.on('init', applyLayout);
