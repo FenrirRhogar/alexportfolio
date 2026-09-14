@@ -22,6 +22,18 @@ const design = defineCollection({
         }),
       )
       .default([]),
+    // a trifold is one sheet printed on both sides and folded into three —
+    // not a sequence of pages, so it gets its own "two flat sides" display
+    // rather than the page-flip treatment `booklets` gives real booklets
+    trifolds: z
+      .array(
+        z.object({
+          title: z.string(),
+          outside: z.string(),
+          inside: z.string(),
+        }),
+      )
+      .default([]),
     tags: z.array(z.string()).default([]),
     featured: z.boolean().default(false),
     order: z.number().default(0),

@@ -38,13 +38,10 @@ booklets:
       - "/media/design/sense/booklet/page-25.jpg"
       - "/media/design/sense/booklet/page-26.jpg"
       - "/media/design/sense/booklet/page-27.jpg"
+trifolds:
   - title: "Dental Clinic Trifold"
-    pdf: "/media/design/sense/sense-dental-trifold.pdf"
-    width: 1600
-    height: 1131
-    pages:
-      - "/media/design/sense/trifold/page-01.jpg"
-      - "/media/design/sense/trifold/page-02.jpg"
+    outside: "/media/design/sense/trifold/page-01.jpg"
+    inside: "/media/design/sense/trifold/page-02.jpg"
 tags: ["Illustration", "Print", "Campaign"]
 featured: true
 order: 4

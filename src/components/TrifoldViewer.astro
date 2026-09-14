@@ -1,0 +1,48 @@
+---
+import { withBase } from '../lib/url';
+
+interface Props {
+  title: string;
+  outside: string;
+  inside: string;
+  class?: string;
+}
+
+const { title, outside, inside, class: className = '' } = Astro.props;
+const sides = [
+  { label: 'Outside', src: outside },
+  { label: 'Inside', src: inside },
+];
+---
+
+<div class:list={['trifold-wrap mx-auto space-y-10', className]}>
+  {sides.map((side) => (
+    <figure>
+      <div class="relative overflow-hidden bg-paper-dim">
+        <img src={withBase(side.src)} alt={`${title} — ${side.label}`} class="w-full h-auto" />
+        <!-- fold guides: a real trifold is one sheet creased into three
+             equal panels, not a sequence of pages, so the two flat print
+             sides are shown as-is with a hint of where it physically folds -->
+        <div class="fold-line" style="left: 33.333%"></div>
+        <div class="fold-line" style="left: 66.666%"></div>
+      </div>
+      <figcaption class="mt-3 text-xs uppercase tracking-widest text-ink-soft text-center">
+        {side.label}
+      </figcaption>
+    </figure>
+  ))}
+</div>
+
+<style>
+  .trifold-wrap {
+    max-width: 46rem;
+  }
+  .fold-line {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 0;
+    border-left: 1px dashed color-mix(in srgb, currentColor 35%, transparent);
+    pointer-events: none;
+  }
+</style>
