@@ -16,3 +16,7 @@ node_modules/
 
 # jetbrains setting folder
 .idea/
+
+# raw Google Drive export — source material already pulled into public/media/,
+# safe to delete once you've confirmed nothing else is needed from it
+WORK-*/
