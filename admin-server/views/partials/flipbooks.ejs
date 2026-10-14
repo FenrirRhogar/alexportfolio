@@ -1,0 +1,135 @@
+<% if (schema.key === 'design') { %>
+  <% if (!entry) { %>
+    <div class="flipbooks-placeholder">
+      <p class="muted">Save this project first — then you can come back here to add flipbooks and trifolds.</p>
+    </div>
+  <% } else { %>
+    <section class="flipbooks-section" id="flipbooks">
+      <div class="section-heading">
+        <h2>📖 Flipbooks</h2>
+        <p class="hint">A set of page images shown as a flip-through book on the project page. Drag pages to reorder them.</p>
+      </div>
+
+      <% (entry.data.booklets || []).forEach((b, i) => { %>
+        <div class="media-card">
+          <div class="media-card-head">
+            <form method="post" action="/admin/design/<%= entry.slug %>/booklets/<%= i %>/rename" enctype="multipart/form-data" class="inline-form">
+              <input type="text" name="title" value="<%= b.title %>" class="title-input" />
+              <label class="file-chip">
+                <input type="file" name="bookletPdf" accept="application/pdf" />
+                📎 Replace PDF
+              </label>
+              <button type="submit" class="button small">Save</button>
+            </form>
+            <% if (b.pdf) { %><a class="pdf-link" href="<%= b.pdf %>" target="_blank" rel="noopener">current PDF ↗</a><% } %>
+            <form method="post" action="/admin/design/<%= entry.slug %>/booklets/<%= i %>/delete"
+                  onsubmit="return confirm('Delete this whole flipbook? This cannot be undone.');" class="inline-form">
+              <button type="submit" class="link-button danger">Delete flipbook</button>
+            </form>
+          </div>
+
+          <ul class="page-grid reorder-pages" data-endpoint="/admin/design/<%= entry.slug %>/booklets/<%= i %>/reorder-pages">
+            <% b.pages.forEach((p) => { %>
+              <li class="page-thumb" draggable="true" data-src="<%= p %>">
+                <img src="<%= p %>" alt="" loading="lazy" />
+                <form method="post" action="/admin/design/<%= entry.slug %>/booklets/<%= i %>/delete-page"
+                      onsubmit="return confirm('Remove this page?');">
+                  <input type="hidden" name="page" value="<%= p %>" />
+                  <button type="submit" class="page-delete" title="Remove this page">×</button>
+                </form>
+              </li>
+            <% }) %>
+          </ul>
+
+          <form method="post" action="/admin/design/<%= entry.slug %>/booklets/<%= i %>/pages" enctype="multipart/form-data" class="inline-form add-pages-form">
+            <input type="file" name="morePages" accept="image/*" multiple required />
+            <button type="submit" class="button small">+ Add pages</button>
+          </form>
+        </div>
+      <% }) %>
+
+      <div class="media-card new-card">
+        <h3>+ New flipbook</h3>
+        <form method="post" action="/admin/design/<%= entry.slug %>/booklets" enctype="multipart/form-data" class="stacked-form">
+          <label class="field">
+            <span>Title</span>
+            <input type="text" name="title" placeholder="e.g. Product catalogue" required />
+          </label>
+          <label class="field">
+            <span>Page images, in order</span>
+            <input type="file" name="newBookletPages" accept="image/*" multiple required />
+          </label>
+          <label class="field">
+            <span>Source PDF (optional, just a download link alongside the pages)</span>
+            <input type="file" name="newBookletPdf" accept="application/pdf" />
+          </label>
+          <div class="form-actions">
+            <button type="submit" class="button">Create flipbook</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <section class="flipbooks-section" id="trifolds">
+      <div class="section-heading">
+        <h2>🪧 Trifolds</h2>
+        <p class="hint">One sheet, printed both sides and folded into three — just the outside and inside images.</p>
+      </div>
+
+      <% (entry.data.trifolds || []).forEach((t, i) => { %>
+        <div class="media-card">
+          <form method="post" action="/admin/design/<%= entry.slug %>/trifolds/<%= i %>" enctype="multipart/form-data" class="stacked-form">
+            <label class="field">
+              <span>Title</span>
+              <input type="text" name="title" value="<%= t.title %>" />
+            </label>
+            <div class="trifold-grid">
+              <label class="field">
+                <span>Outside</span>
+                <img class="current-media" src="<%= t.outside %>" alt="" />
+                <input type="file" name="outside" accept="image/*" />
+              </label>
+              <label class="field">
+                <span>Inside</span>
+                <img class="current-media" src="<%= t.inside %>" alt="" />
+                <input type="file" name="inside" accept="image/*" />
+              </label>
+            </div>
+            <div class="form-actions">
+              <button type="submit" class="button small">Save</button>
+            </div>
+          </form>
+          <form method="post" action="/admin/design/<%= entry.slug %>/trifolds/<%= i %>/delete"
+                onsubmit="return confirm('Delete this trifold? This cannot be undone.');">
+            <button type="submit" class="link-button danger">Delete trifold</button>
+          </form>
+        </div>
+      <% }) %>
+
+      <div class="media-card new-card">
+        <h3>+ New trifold</h3>
+        <form method="post" action="/admin/design/<%= entry.slug %>/trifolds" enctype="multipart/form-data" class="stacked-form">
+          <label class="field">
+            <span>Title</span>
+            <input type="text" name="title" placeholder="e.g. Dental clinic trifold" />
+          </label>
+          <div class="trifold-grid">
+            <label class="field">
+              <span>Outside</span>
+              <input type="file" name="outside" accept="image/*" required />
+            </label>
+            <label class="field">
+              <span>Inside</span>
+              <input type="file" name="inside" accept="image/*" required />
+            </label>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="button">Create trifold</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <script src="/admin/flipbook-reorder.js"></script>
+  <% } %>
+<% } %>

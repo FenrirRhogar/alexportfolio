@@ -45,7 +45,7 @@
 
   async function saveOrder() {
     const slugs = [...list.querySelectorAll('.entry-row')].map((row) => row.dataset.slug);
-    await fetch(`/${collection}/reorder`, {
+    await fetch(`/admin/${collection}/reorder`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ slugs }),

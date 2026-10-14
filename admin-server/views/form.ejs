@@ -2,13 +2,14 @@
 
 <div class="list-header">
   <h1><%= entry ? 'Edit' : 'New' %> <%= schema.singular.toLowerCase() %></h1>
-  <a href="/<%= schema.key %>">← Back to list</a>
+  <div class="list-header-actions">
+    <% if (entry && schema.hasFlipbooks) { %>
+      <a href="#flipbooks" class="button ghost small">📖 Flipbooks</a>
+      <a href="#trifolds" class="button ghost small">🪧 Trifolds</a>
+    <% } %>
+    <a href="/admin/<%= schema.key %>">← Back to list</a>
+  </div>
 </div>
-
-<% const notice = entry && schema.readOnlyNotice ? schema.readOnlyNotice(entry.data) : null; %>
-<% if (notice) { %>
-  <div class="flash info"><%= notice %></div>
-<% } %>
 
 <form method="post" enctype="multipart/form-data" class="entry-form">
   <% schema.fields.forEach((f) => { %>
@@ -86,5 +87,9 @@
     <button type="submit">Save</button>
   </div>
 </form>
+
+<% if (schema.hasFlipbooks) { %>
+  <%- include('partials/flipbooks', { schema, entry }) %>
+<% } %>
 
 <%- include('partials/footer') %>

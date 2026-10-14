@@ -6,13 +6,14 @@ home server, edits the same files as the main site, and commits + pushes
 automatically. GitHub Pages picks up the push and rebuilds the public site
 exactly like it always has.
 
-**What it can't do:** the Mobiak/Sense/SFHMMY flipbook and trifold pieces
-(`booklets` / `trifolds` in a design entry's frontmatter) aren't editable
-here — building those is a PDF-to-image pipeline, out of scope for a web
-form. The dashboard shows a notice on any project that has one and points
-back to `CONTENT.md` in the main repo for editing those by hand. Everything
-else — titles, summaries, images, video, gallery, order — is fully
-self-service.
+Every field is editable here, including the flipbook/trifold pieces (the
+Mobiak/Sense/SFHMMY-style flip-through booklets and folded print pieces) —
+add a new one, add/remove/reorder its page images by dragging them, swap
+out a trifold's outside/inside image, or delete the whole thing. The only
+thing this *can't* do is turn a raw PDF into page images for you — Alexandra
+uploads the page images themselves (already exported as JPGs/PNGs from
+whatever she designed them in), and can optionally attach the source PDF
+too, just as a downloadable link alongside the pages.
 
 ## How it works
 

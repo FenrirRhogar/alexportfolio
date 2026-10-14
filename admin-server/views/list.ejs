@@ -2,7 +2,7 @@
 
 <div class="list-header">
   <h1><%= schema.label %></h1>
-  <a class="button" href="/<%= schema.key %>/new">+ Add new</a>
+  <a class="button" href="/admin/<%= schema.key %>/new">+ Add new</a>
 </div>
 
 <p class="hint">Drag the ⠿ handle to reorder — the homepage and category page show them in this order.</p>
@@ -25,8 +25,8 @@
         </span>
       </div>
       <div class="entry-actions">
-        <a href="/<%= schema.key %>/<%= e.slug %>/edit">Edit</a>
-        <form method="post" action="/<%= schema.key %>/<%= e.slug %>/delete" onsubmit="return confirm('Delete &quot;' + <%- JSON.stringify(e.data.title) %> + '&quot;? This cannot be undone.');">
+        <a href="/admin/<%= schema.key %>/<%= e.slug %>/edit">Edit</a>
+        <form method="post" action="/admin/<%= schema.key %>/<%= e.slug %>/delete" onsubmit="return confirm('Delete &quot;' + <%- JSON.stringify(e.data.title) %> + '&quot;? This cannot be undone.');">
           <button type="submit" class="link-button danger">Delete</button>
         </form>
       </div>
@@ -38,6 +38,6 @@
   <p class="muted">Nothing here yet — click "Add new" above to create the first one.</p>
 <% } %>
 
-<script src="/reorder.js"></script>
+<script src="/admin/reorder.js"></script>
 
 <%- include('partials/footer') %>

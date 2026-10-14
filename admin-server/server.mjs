@@ -7,16 +7,35 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { COLLECTIONS, getCollection } from './lib/schema.mjs';
 import { listEntries, getEntry, createEntry, updateEntry, deleteEntry, reorderEntries } from './lib/content.mjs';
-import { upload, placeUpload, deleteMediaFile, deleteEntryMedia } from './lib/upload.mjs';
+import {
+  upload,
+  placeUpload,
+  placeMultiple,
+  readImageDimensions,
+  deleteMediaFile,
+  deleteMediaFileDir,
+  deleteEntryMedia,
+  siteDirOf,
+} from './lib/upload.mjs';
 import { commitAndPush } from './lib/git.mjs';
+import { proxyTo } from './lib/proxy.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3000;
 const PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH;
 const SESSION_SECRET = process.env.SESSION_SECRET;
+// where the public portfolio itself is served from — the Astro dev server
+// while testing, or wherever the built site is served from in production
+// (see README.md). Everything that isn't under /admin gets proxied there,
+// so visitors and Alexandra share one URL, with /admin as her edit panel.
+const PUBLIC_SITE_ORIGIN = process.env.PUBLIC_SITE_ORIGIN;
 
 if (!PASSWORD_HASH || !SESSION_SECRET) {
   console.error('ADMIN_PASSWORD_HASH and SESSION_SECRET must be set — see .env.example');
+  process.exit(1);
+}
+if (!PUBLIC_SITE_ORIGIN) {
+  console.error('PUBLIC_SITE_ORIGIN must be set — see .env.example');
   process.exit(1);
 }
 
@@ -25,11 +44,14 @@ app.set('view engine', 'ejs');
 app.set('views', join(__dirname, 'views'));
 app.set('trust proxy', 1); // sitting behind a reverse proxy on the home server
 
-app.use(express.urlencoded({ extended: true }));
-app.use(express.json());
-app.use(express.static(join(__dirname, 'public')));
+// ---------- everything admin-related lives under /admin ----------
 
-app.use(
+const admin = express.Router();
+admin.use(express.static(join(__dirname, 'public')));
+admin.use(express.urlencoded({ extended: true }));
+admin.use(express.json());
+
+admin.use(
   session({
     secret: SESSION_SECRET,
     resave: false,
@@ -54,35 +76,35 @@ function setFlash(req, type, message) {
 
 function requireAuth(req, res, next) {
   if (req.session.authed) return next();
-  return res.redirect(303, '/login');
+  return res.redirect(303, '/admin/login');
 }
 
 const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, standardHeaders: true });
 
 // ---------- auth ----------
 
-app.get('/login', (req, res) => {
-  if (req.session.authed) return res.redirect(303, '/');
+admin.get('/login', (req, res) => {
+  if (req.session.authed) return res.redirect(303, '/admin');
   res.render('login', { flash: flash(req) });
 });
 
-app.post('/login', loginLimiter, async (req, res) => {
+admin.post('/login', loginLimiter, async (req, res) => {
   const ok = req.body.password && (await bcrypt.compare(req.body.password, PASSWORD_HASH));
   if (!ok) {
     setFlash(req, 'error', 'Wrong password.');
-    return res.redirect(303, '/login');
+    return res.redirect(303, '/admin/login');
   }
   req.session.authed = true;
-  res.redirect(303, '/');
+  res.redirect(303, '/admin');
 });
 
-app.post('/logout', (req, res) => {
-  req.session.destroy(() => res.redirect(303, '/login'));
+admin.post('/logout', (req, res) => {
+  req.session.destroy(() => res.redirect(303, '/admin/login'));
 });
 
 // ---------- dashboard ----------
 
-app.get('/', requireAuth, (req, res) => {
+admin.get('/', requireAuth, (req, res) => {
   const collections = Object.values(COLLECTIONS).map((c) => ({
     key: c.key,
     label: c.label,
@@ -177,21 +199,21 @@ for (const key of Object.keys(COLLECTIONS)) {
   const schema = getCollection(key);
   const uploadMw = upload.fields(uploadFieldsFor(schema));
 
-  app.get(`/${key}`, requireAuth, (req, res) => {
+  admin.get(`/${key}`, requireAuth, (req, res) => {
     res.render('list', { schema, entries: listEntries(key), flash: flash(req) });
   });
 
-  app.post(`/${key}/reorder`, requireAuth, async (req, res) => {
+  admin.post(`/${key}/reorder`, requireAuth, async (req, res) => {
     reorderEntries(key, req.body.slugs || []);
     await commitAndPush(`Admin: reorder ${key}`);
     res.json({ ok: true });
   });
 
-  app.get(`/${key}/new`, requireAuth, (req, res) => {
+  admin.get(`/${key}/new`, requireAuth, (req, res) => {
     res.render('form', { schema, entry: null, flash: flash(req) });
   });
 
-  app.post(`/${key}/new`, requireAuth, uploadMw, async (req, res) => {
+  admin.post(`/${key}/new`, requireAuth, uploadMw, async (req, res) => {
     try {
       const fields = coerceFields(schema, req.body);
       // create the entry first (gets us a real, unique slug), then place
@@ -203,21 +225,21 @@ for (const key of Object.keys(COLLECTIONS)) {
 
       const result = await commitAndPush(`Admin: add ${key}/${slug}`);
       setFlash(req, result.pushed ? 'success' : 'error', `Created "${fields.title}". ${result.message}`);
-      res.redirect(303, `/${key}`);
+      res.redirect(303, `/admin/${key}`);
     } catch (err) {
       console.error(err);
       setFlash(req, 'error', `Could not save: ${err.message}`);
-      res.redirect(303, `/${key}/new`);
+      res.redirect(303, `/admin/${key}/new`);
     }
   });
 
-  app.get(`/${key}/:slug/edit`, requireAuth, (req, res) => {
+  admin.get(`/${key}/:slug/edit`, requireAuth, (req, res) => {
     const entry = getEntry(key, req.params.slug);
     if (!entry) return res.status(404).send('Not found');
     res.render('form', { schema, entry, flash: flash(req) });
   });
 
-  app.post(`/${key}/:slug/edit`, requireAuth, uploadMw, async (req, res) => {
+  admin.post(`/${key}/:slug/edit`, requireAuth, uploadMw, async (req, res) => {
     const { slug } = req.params;
     try {
       const existing = getEntry(key, slug);
@@ -237,24 +259,276 @@ for (const key of Object.keys(COLLECTIONS)) {
       updateEntry(key, slug, fields, mediaPaths);
       const result = await commitAndPush(`Admin: edit ${key}/${slug}`);
       setFlash(req, result.pushed ? 'success' : 'error', `Saved. ${result.message}`);
-      res.redirect(303, `/${key}`);
+      res.redirect(303, `/admin/${key}`);
     } catch (err) {
       console.error(err);
       setFlash(req, 'error', `Could not save: ${err.message}`);
-      res.redirect(303, `/${key}/${slug}/edit`);
+      res.redirect(303, `/admin/${key}/${slug}/edit`);
     }
   });
 
-  app.post(`/${key}/:slug/delete`, requireAuth, async (req, res) => {
+  admin.post(`/${key}/:slug/delete`, requireAuth, async (req, res) => {
     const { slug } = req.params;
     deleteEntry(key, slug);
     deleteEntryMedia(key, slug);
     const result = await commitAndPush(`Admin: delete ${key}/${slug}`);
     setFlash(req, result.pushed ? 'success' : 'error', `Deleted. ${result.message}`);
-    res.redirect(303, `/${key}`);
+    res.redirect(303, `/admin/${key}`);
   });
 }
 
+// ---------- design-only: flipbooks (booklets) and trifolds ----------
+// Both are ordered image sequences rather than a single value, so they get
+// their own small sub-resource routes instead of the generic field form.
+
+const bookletCreateUpload = upload.fields([
+  { name: 'newBookletPages', maxCount: 200 },
+  { name: 'newBookletPdf', maxCount: 1 },
+]);
+const bookletPagesUpload = upload.fields([{ name: 'morePages', maxCount: 200 }]);
+const bookletRenameUpload = upload.fields([{ name: 'bookletPdf', maxCount: 1 }]);
+const trifoldUpload = upload.fields([
+  { name: 'outside', maxCount: 1 },
+  { name: 'inside', maxCount: 1 },
+]);
+
+function requireDesignEntry(req, res) {
+  const entry = getEntry('design', req.params.slug);
+  if (!entry) {
+    res.status(404).send('Not found');
+    return null;
+  }
+  return entry;
+}
+
+admin.post('/design/:slug/booklets', requireAuth, bookletCreateUpload, async (req, res) => {
+  const { slug } = req.params;
+  try {
+    const entry = requireDesignEntry(req, res);
+    if (!entry) return;
+    const pageFiles = req.files?.newBookletPages || [];
+    if (pageFiles.length === 0) throw new Error('Choose at least one page image.');
+
+    const { width, height } = readImageDimensions(pageFiles[0]);
+    const publicDir = `media/design/${slug}/flipbook-${Date.now()}`;
+    const pages = placeMultiple(pageFiles, { publicDir, prefix: 'page' });
+
+    const booklet = { title: (req.body.title || 'Untitled flipbook').trim(), width, height, pages };
+    const pdfFile = req.files?.newBookletPdf?.[0];
+    if (pdfFile) booklet.pdf = placeUpload(pdfFile, { publicDir, baseName: 'source' });
+
+    const booklets = [...(entry.data.booklets || []), booklet];
+    updateEntry('design', slug, {}, { booklets });
+    const result = await commitAndPush(`Admin: add flipbook to design/${slug}`);
+    setFlash(req, result.pushed ? 'success' : 'error', `Flipbook added. ${result.message}`);
+  } catch (err) {
+    console.error(err);
+    setFlash(req, 'error', `Could not add flipbook: ${err.message}`);
+  }
+  res.redirect(303, `/admin/design/${slug}/edit#flipbooks`);
+});
+
+admin.post('/design/:slug/booklets/:index/pages', requireAuth, bookletPagesUpload, async (req, res) => {
+  const { slug, index } = req.params;
+  const idx = Number(index);
+  try {
+    const entry = requireDesignEntry(req, res);
+    if (!entry) return;
+    const booklets = entry.data.booklets || [];
+    const booklet = booklets[idx];
+    if (!booklet) throw new Error('Flipbook not found.');
+    const newFiles = req.files?.morePages || [];
+    if (newFiles.length === 0) throw new Error('Choose at least one page image.');
+
+    const publicDir = booklet.pages.length ? siteDirOf(booklet.pages[0]) : `media/design/${slug}/flipbook-${Date.now()}`;
+    const added = placeMultiple(newFiles, { publicDir, prefix: 'page' });
+    booklets[idx] = { ...booklet, pages: [...booklet.pages, ...added] };
+    updateEntry('design', slug, {}, { booklets });
+    const result = await commitAndPush(`Admin: add pages to a design/${slug} flipbook`);
+    setFlash(req, result.pushed ? 'success' : 'error', `Pages added. ${result.message}`);
+  } catch (err) {
+    console.error(err);
+    setFlash(req, 'error', `Could not add pages: ${err.message}`);
+  }
+  res.redirect(303, `/admin/design/${slug}/edit#flipbooks`);
+});
+
+admin.post('/design/:slug/booklets/:index/reorder-pages', requireAuth, async (req, res) => {
+  const { slug, index } = req.params;
+  const idx = Number(index);
+  const entry = getEntry('design', slug);
+  const booklets = entry?.data.booklets || [];
+  const booklet = booklets[idx];
+  const incoming = req.body.pages;
+  const validSet = Array.isArray(incoming) && new Set(incoming).size === incoming.length && incoming.every((p) => booklet?.pages.includes(p));
+
+  if (!entry || !booklet || !validSet || incoming.length !== booklet.pages.length) {
+    return res.status(400).json({ ok: false });
+  }
+
+  booklets[idx] = { ...booklet, pages: incoming };
+  updateEntry('design', slug, {}, { booklets });
+  await commitAndPush(`Admin: reorder a design/${slug} flipbook's pages`);
+  res.json({ ok: true });
+});
+
+admin.post('/design/:slug/booklets/:index/delete-page', requireAuth, async (req, res) => {
+  const { slug, index } = req.params;
+  const idx = Number(index);
+  try {
+    const entry = requireDesignEntry(req, res);
+    if (!entry) return;
+    const booklets = entry.data.booklets || [];
+    const booklet = booklets[idx];
+    if (!booklet) throw new Error('Flipbook not found.');
+
+    const page = req.body.page;
+    deleteMediaFile(page);
+    booklets[idx] = { ...booklet, pages: booklet.pages.filter((p) => p !== page) };
+    updateEntry('design', slug, {}, { booklets });
+    const result = await commitAndPush(`Admin: remove a page from a design/${slug} flipbook`);
+    setFlash(req, result.pushed ? 'success' : 'error', `Page removed. ${result.message}`);
+  } catch (err) {
+    console.error(err);
+    setFlash(req, 'error', `Could not remove page: ${err.message}`);
+  }
+  res.redirect(303, `/admin/design/${slug}/edit#flipbooks`);
+});
+
+admin.post('/design/:slug/booklets/:index/rename', requireAuth, bookletRenameUpload, async (req, res) => {
+  const { slug, index } = req.params;
+  const idx = Number(index);
+  try {
+    const entry = requireDesignEntry(req, res);
+    if (!entry) return;
+    const booklets = entry.data.booklets || [];
+    const booklet = booklets[idx];
+    if (!booklet) throw new Error('Flipbook not found.');
+
+    const updated = { ...booklet, title: (req.body.title || booklet.title).trim() };
+    const pdfFile = req.files?.bookletPdf?.[0];
+    if (pdfFile) {
+      const publicDir = booklet.pages.length ? siteDirOf(booklet.pages[0]) : `media/design/${slug}/flipbook-${Date.now()}`;
+      updated.pdf = placeUpload(pdfFile, { publicDir, baseName: 'source' });
+    }
+    booklets[idx] = updated;
+    updateEntry('design', slug, {}, { booklets });
+    const result = await commitAndPush(`Admin: update a design/${slug} flipbook`);
+    setFlash(req, result.pushed ? 'success' : 'error', `Saved. ${result.message}`);
+  } catch (err) {
+    console.error(err);
+    setFlash(req, 'error', `Could not save: ${err.message}`);
+  }
+  res.redirect(303, `/admin/design/${slug}/edit#flipbooks`);
+});
+
+admin.post('/design/:slug/booklets/:index/delete', requireAuth, async (req, res) => {
+  const { slug, index } = req.params;
+  const idx = Number(index);
+  try {
+    const entry = requireDesignEntry(req, res);
+    if (!entry) return;
+    const booklets = entry.data.booklets || [];
+    const booklet = booklets[idx];
+    if (!booklet) throw new Error('Flipbook not found.');
+
+    if (booklet.pages[0]) deleteMediaFileDir(booklet.pages[0]);
+    booklets.splice(idx, 1);
+    updateEntry('design', slug, {}, { booklets });
+    const result = await commitAndPush(`Admin: delete a flipbook from design/${slug}`);
+    setFlash(req, result.pushed ? 'success' : 'error', `Flipbook deleted. ${result.message}`);
+  } catch (err) {
+    console.error(err);
+    setFlash(req, 'error', `Could not delete: ${err.message}`);
+  }
+  res.redirect(303, `/admin/design/${slug}/edit#flipbooks`);
+});
+
+admin.post('/design/:slug/trifolds', requireAuth, trifoldUpload, async (req, res) => {
+  const { slug } = req.params;
+  try {
+    const entry = requireDesignEntry(req, res);
+    if (!entry) return;
+    const outsideFile = req.files?.outside?.[0];
+    const insideFile = req.files?.inside?.[0];
+    if (!outsideFile || !insideFile) throw new Error('Both outside and inside images are required.');
+
+    const publicDir = `media/design/${slug}/trifold-${Date.now()}`;
+    const trifold = {
+      title: (req.body.title || 'Untitled trifold').trim(),
+      outside: placeUpload(outsideFile, { publicDir, baseName: 'outside' }),
+      inside: placeUpload(insideFile, { publicDir, baseName: 'inside' }),
+    };
+    const trifolds = [...(entry.data.trifolds || []), trifold];
+    updateEntry('design', slug, {}, { trifolds });
+    const result = await commitAndPush(`Admin: add trifold to design/${slug}`);
+    setFlash(req, result.pushed ? 'success' : 'error', `Trifold added. ${result.message}`);
+  } catch (err) {
+    console.error(err);
+    setFlash(req, 'error', `Could not add trifold: ${err.message}`);
+  }
+  res.redirect(303, `/admin/design/${slug}/edit#trifolds`);
+});
+
+admin.post('/design/:slug/trifolds/:index', requireAuth, trifoldUpload, async (req, res) => {
+  const { slug, index } = req.params;
+  const idx = Number(index);
+  try {
+    const entry = requireDesignEntry(req, res);
+    if (!entry) return;
+    const trifolds = entry.data.trifolds || [];
+    const trifold = trifolds[idx];
+    if (!trifold) throw new Error('Trifold not found.');
+
+    const publicDir = siteDirOf(trifold.outside);
+    const updated = { ...trifold, title: (req.body.title || trifold.title).trim() };
+    const outsideFile = req.files?.outside?.[0];
+    const insideFile = req.files?.inside?.[0];
+    if (outsideFile) updated.outside = placeUpload(outsideFile, { publicDir, baseName: 'outside' });
+    if (insideFile) updated.inside = placeUpload(insideFile, { publicDir, baseName: 'inside' });
+
+    trifolds[idx] = updated;
+    updateEntry('design', slug, {}, { trifolds });
+    const result = await commitAndPush(`Admin: update a design/${slug} trifold`);
+    setFlash(req, result.pushed ? 'success' : 'error', `Saved. ${result.message}`);
+  } catch (err) {
+    console.error(err);
+    setFlash(req, 'error', `Could not save: ${err.message}`);
+  }
+  res.redirect(303, `/admin/design/${slug}/edit#trifolds`);
+});
+
+admin.post('/design/:slug/trifolds/:index/delete', requireAuth, async (req, res) => {
+  const { slug, index } = req.params;
+  const idx = Number(index);
+  try {
+    const entry = requireDesignEntry(req, res);
+    if (!entry) return;
+    const trifolds = entry.data.trifolds || [];
+    const trifold = trifolds[idx];
+    if (!trifold) throw new Error('Trifold not found.');
+
+    deleteMediaFileDir(trifold.outside);
+    trifolds.splice(idx, 1);
+    updateEntry('design', slug, {}, { trifolds });
+    const result = await commitAndPush(`Admin: delete a trifold from design/${slug}`);
+    setFlash(req, result.pushed ? 'success' : 'error', `Trifold deleted. ${result.message}`);
+  } catch (err) {
+    console.error(err);
+    setFlash(req, 'error', `Could not delete: ${err.message}`);
+  }
+  res.redirect(303, `/admin/design/${slug}/edit#trifolds`);
+});
+
+app.use('/admin', admin);
+
+// ---------- everything else: proxy through to the public site ----------
+// so Alexandra (and everyone else) can use one URL — the public pages at
+// "/", her edit panel at "/admin" — regardless of where the public site
+// is actually served from.
+
+app.use(proxyTo(PUBLIC_SITE_ORIGIN));
+
 app.listen(PORT, () => {
-  console.log(`Portfolio admin listening on http://localhost:${PORT}`);
+  console.log(`Portfolio admin listening on http://localhost:${PORT} (public site proxied from ${PUBLIC_SITE_ORIGIN})`);
 });

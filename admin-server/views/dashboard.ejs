@@ -4,7 +4,7 @@
 
 <div class="card-grid">
   <% collections.forEach((c) => { %>
-    <a class="card" href="/<%= c.key %>">
+    <a class="card" href="/admin/<%= c.key %>">
       <h2><%= c.label %></h2>
       <p><%= c.count %> <%= c.count === 1 ? c.singular.toLowerCase() : c.singular.toLowerCase() + 's' %></p>
     </a>

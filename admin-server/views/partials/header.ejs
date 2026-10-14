@@ -4,18 +4,22 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title><%= title %> — Portfolio Admin</title>
-  <link rel="stylesheet" href="/style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&display=swap" />
+  <link rel="stylesheet" href="/admin/style.css" />
 </head>
 <body>
   <% if (typeof hideNav === 'undefined' || !hideNav) { %>
   <header class="topbar">
-    <a href="/" class="brand">Portfolio Admin</a>
+    <a href="/admin" class="brand">✎ Portfolio Admin</a>
     <nav>
-      <a href="/design">Design</a>
-      <a href="/motion">Motion</a>
-      <a href="/fineart">Fine Art</a>
+      <a href="/admin/design">🎨 Design</a>
+      <a href="/admin/motion">🎬 Motion</a>
+      <a href="/admin/fineart">🖼️ Fine Art</a>
     </nav>
-    <form method="post" action="/logout" class="logout-form">
+    <a href="/" class="view-site-link" target="_blank" rel="noopener">View site ↗</a>
+    <form method="post" action="/admin/logout" class="logout-form">
       <button type="submit">Log out</button>
     </form>
   </header>

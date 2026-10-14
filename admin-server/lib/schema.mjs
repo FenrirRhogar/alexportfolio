@@ -18,12 +18,11 @@ export const COLLECTIONS = {
     ],
     image: { name: 'cover', label: 'Cover image', kind: 'image' },
     gallery: { name: 'gallery', label: 'Gallery images', kind: 'image' },
-    // these exist in the schema but aren't editable from this dashboard —
-    // preserved as-is on every save (see lib/content.mjs)
-    readOnlyNotice: (data) =>
-      (data.booklets?.length || data.trifolds?.length)
-        ? 'This project has a flipbook/trifold attached — edit those via the content files directly (see CONTENT.md).'
-        : null,
+    // flipbooks/trifolds have their own dedicated management UI (see
+    // form.ejs + the /design/:slug/booklets|trifolds routes) rather than
+    // the generic field list above — they're ordered image sequences, not
+    // a single value a plain text/file input can represent.
+    hasFlipbooks: true,
   },
   motion: {
     key: 'motion',
