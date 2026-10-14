@@ -39,7 +39,7 @@
           <span class="muted">current file — choose a new one below to replace it</span>
         </div>
       <% } %>
-      <input type="file" name="<%= f.name %>" accept="<%= f.kind === 'video' ? 'video/*' : 'image/*' %>"
+      <input type="file" name="<%= f.name %>" accept="<%= f.kind === 'video' ? 'video/mp4,video/webm' : 'image/jpeg,image/png,image/webp,image/gif,image/avif' %>"
         <%= (!entry && !f.optional) ? 'required' : '' %> />
     </label>
   <% }) %>
@@ -58,7 +58,7 @@
           <% }) %>
         </div>
       <% } %>
-      <input type="file" name="galleryNew" accept="image/*" multiple />
+      <input type="file" name="galleryNew" accept="image/jpeg,image/png,image/webp,image/gif,image/avif" multiple />
       <span class="muted">Add more images to the gallery (existing ones stay unless checked "Remove" above).</span>
     </div>
   <% } %>

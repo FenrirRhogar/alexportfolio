@@ -1,8 +1,28 @@
 import multer from 'multer';
 import { mkdirSync, readdirSync, unlinkSync, existsSync, copyFileSync, rmSync, readFileSync } from 'node:fs';
-import { join, extname, dirname } from 'node:path';
+import { join, dirname } from 'node:path';
 import { imageSize } from 'image-size';
 import { SITE_REPO } from './content.mjs';
+
+// The only file types this app will ever write to disk, and the exact
+// extension each gets — deliberately NOT derived from the uploaded file's
+// original name, which is attacker-controlled and easy to lie about (a
+// request can claim Content-Type: image/jpeg while naming the file
+// "evil.html"; trusting that name would get it served back as HTML from
+// the same origin). Keying the extension off the (filter-verified) MIME
+// type instead means what lands on disk always matches how it'll be
+// served. SVG is deliberately excluded even though it's "an image" — it
+// can contain a <script> that runs if the file is opened directly.
+const MIME_EXTENSIONS = {
+  'image/jpeg': '.jpg',
+  'image/png': '.png',
+  'image/webp': '.webp',
+  'image/gif': '.gif',
+  'image/avif': '.avif',
+  'video/mp4': '.mp4',
+  'video/webm': '.webm',
+};
+const PDF_MIME = 'application/pdf';
 
 // Uploads land in a scratch dir first (multer needs a destination before
 // we know the slug for a brand-new entry); the route handler then moves
@@ -10,18 +30,30 @@ import { SITE_REPO } from './content.mjs';
 const TMP_DIR = join(SITE_REPO, 'admin-server', '.uploads-tmp');
 mkdirSync(TMP_DIR, { recursive: true });
 
+/** Turns a multer/fileFilter error into a short, safe message to show the
+ * user — never the raw error (which can include internal file paths). */
+export function friendlyUploadError(err) {
+  if (err instanceof multer.MulterError) {
+    if (err.code === 'LIMIT_FILE_SIZE') return 'That file is too large (500MB max).';
+    return 'There was a problem with that upload.';
+  }
+  // fileFilter throws plain Errors with messages we wrote ourselves above —
+  // safe to show directly, unlike anything from deeper in the stack.
+  return err?.message && err.message.length < 200 ? err.message : 'There was a problem with that upload.';
+}
+
 export const upload = multer({
   dest: TMP_DIR,
   limits: { fileSize: 500 * 1024 * 1024 }, // 500MB — generous for video
   fileFilter(req, file, cb) {
     // page images must be real images; a flipbook's optional source file
     // is the one upload field allowed to be a PDF instead
-    if (file.fieldname === 'newBookletPdf' || file.fieldname === 'bookletPdf') {
-      if (file.mimetype === 'application/pdf') return cb(null, true);
-      return cb(new Error('That file must be a PDF.'));
+    const isPdfField = file.fieldname === 'newBookletPdf' || file.fieldname === 'bookletPdf';
+    if (isPdfField) {
+      return file.mimetype === PDF_MIME ? cb(null, true) : cb(new Error('That file must be a PDF.'));
     }
-    if (file.mimetype.startsWith('image/') || file.mimetype.startsWith('video/')) return cb(null, true);
-    cb(new Error('Unsupported file type.'));
+    if (MIME_EXTENSIONS[file.mimetype]) return cb(null, true);
+    cb(new Error('Unsupported file type — use JPG, PNG, WEBP, GIF, AVIF, MP4, or WEBM.'));
   },
 });
 
@@ -43,7 +75,8 @@ function clearExisting(dir, basename) {
  * folder (e.g. "media/design/my-project").
  */
 export function placeUpload(tmpFile, { publicDir, baseName }) {
-  const ext = extname(tmpFile.originalname) || '.jpg';
+  const ext = MIME_EXTENSIONS[tmpFile.mimetype] || (tmpFile.mimetype === PDF_MIME ? '.pdf' : null);
+  if (!ext) throw new Error(`Unsupported file type: ${tmpFile.mimetype}`);
   const fsDir = join(SITE_REPO, 'public', publicDir);
   mkdirSync(fsDir, { recursive: true });
   clearExisting(fsDir, baseName);

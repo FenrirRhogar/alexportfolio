@@ -88,10 +88,6 @@ export const SITE_SECTIONS = [
     ],
   },
   {
-    heading: 'Homepage — showreel',
-    fields: [{ name: 'showreelCaption', label: 'Caption under the video', type: 'text' }],
-  },
-  {
     heading: 'About page',
     fields: [
       { name: 'aboutEyebrow', label: 'Small label above the headline', type: 'text', required: true },

@@ -88,10 +88,6 @@ const site = defineCollection({
     heroHeading: z.string(),
     heroSubheading: z.string(),
 
-    showreelCaption: z.string().optional(),
-    showreelVideo: z.string().optional(),
-    showreelVideoWebm: z.string().optional(),
-
     aboutEyebrow: z.string(),
     aboutHeading: z.string(),
     aboutPhoto: z.string().optional(),

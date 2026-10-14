@@ -8,10 +8,6 @@ heroEyebrow: "Designer — Editor — Painter"
 heroHeading: "Hi, I'm Alexandra. I make things look, move, and feel like something."
 heroSubheading: "A one-person studio working across brand design, video editing, and painting — based wherever the light is good that week."
 
-showreelCaption: "Showreel — 2025"
-showreelVideo: "/media/showreel.mp4"
-showreelVideoWebm: "/media/showreel.webm"
-
 aboutEyebrow: "About"
 aboutHeading: "Three disciplines, one pair of tired eyes."
 aboutPhoto: "/media/about-photo.svg"

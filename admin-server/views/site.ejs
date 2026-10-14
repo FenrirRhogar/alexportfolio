@@ -15,29 +15,6 @@
         <%- include('partials/field', { f, value }) %>
       <% }) %>
 
-      <% if (section.heading === 'Homepage — showreel') { %>
-        <label class="field">
-          <span>Showreel video (mp4)</span>
-          <% if (site.showreelVideo) { %>
-            <div class="current-media">
-              <video src="<%= site.showreelVideo %>" controls muted></video>
-              <span class="muted">current file — choose a new one below to replace it</span>
-            </div>
-          <% } %>
-          <input type="file" name="showreelVideo" accept="video/mp4" />
-        </label>
-        <label class="field">
-          <span>Showreel video (webm, optional — smaller file, used when supported)</span>
-          <% if (site.showreelVideoWebm) { %>
-            <div class="current-media">
-              <video src="<%= site.showreelVideoWebm %>" controls muted></video>
-              <span class="muted">current file — choose a new one below to replace it</span>
-            </div>
-          <% } %>
-          <input type="file" name="showreelVideoWebm" accept="video/webm" />
-        </label>
-      <% } %>
-
       <% if (section.heading === 'About page') { %>
         <label class="field">
           <span>Photo</span>
@@ -48,7 +25,7 @@
             </div>
             <span><input type="checkbox" name="removeAboutPhoto" value="1" /> Remove this photo (hide it on the About page)</span>
           <% } %>
-          <input type="file" name="aboutPhoto" accept="image/*" />
+          <input type="file" name="aboutPhoto" accept="image/jpeg,image/png,image/webp,image/gif,image/avif" />
         </label>
       <% } %>
     </div>

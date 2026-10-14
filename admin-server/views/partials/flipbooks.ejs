@@ -23,7 +23,7 @@
             </form>
             <% if (b.pdf) { %><a class="pdf-link" href="<%= b.pdf %>" target="_blank" rel="noopener">current PDF ↗</a><% } %>
             <form method="post" action="/admin/design/<%= entry.slug %>/booklets/<%= i %>/delete"
-                  onsubmit="return confirm('Delete this whole flipbook? This cannot be undone.');" class="inline-form">
+                  data-confirm="Delete this whole flipbook? This cannot be undone." class="inline-form">
               <button type="submit" class="link-button danger">Delete flipbook</button>
             </form>
           </div>
@@ -33,7 +33,7 @@
               <li class="page-thumb" draggable="true" data-src="<%= p %>">
                 <img src="<%= p %>" alt="" loading="lazy" />
                 <form method="post" action="/admin/design/<%= entry.slug %>/booklets/<%= i %>/delete-page"
-                      onsubmit="return confirm('Remove this page?');">
+                      data-confirm="Remove this page?">
                   <input type="hidden" name="page" value="<%= p %>" />
                   <button type="submit" class="page-delete" title="Remove this page">×</button>
                 </form>
@@ -42,7 +42,7 @@
           </ul>
 
           <form method="post" action="/admin/design/<%= entry.slug %>/booklets/<%= i %>/pages" enctype="multipart/form-data" class="inline-form add-pages-form">
-            <input type="file" name="morePages" accept="image/*" multiple required />
+            <input type="file" name="morePages" accept="image/jpeg,image/png,image/webp,image/gif,image/avif" multiple required />
             <button type="submit" class="button small">+ Add pages</button>
           </form>
         </div>
@@ -57,7 +57,7 @@
           </label>
           <label class="field">
             <span>Page images, in order</span>
-            <input type="file" name="newBookletPages" accept="image/*" multiple required />
+            <input type="file" name="newBookletPages" accept="image/jpeg,image/png,image/webp,image/gif,image/avif" multiple required />
           </label>
           <label class="field">
             <span>Source PDF (optional, just a download link alongside the pages)</span>
@@ -87,12 +87,12 @@
               <label class="field">
                 <span>Outside</span>
                 <img class="current-media" src="<%= t.outside %>" alt="" />
-                <input type="file" name="outside" accept="image/*" />
+                <input type="file" name="outside" accept="image/jpeg,image/png,image/webp,image/gif,image/avif" />
               </label>
               <label class="field">
                 <span>Inside</span>
                 <img class="current-media" src="<%= t.inside %>" alt="" />
-                <input type="file" name="inside" accept="image/*" />
+                <input type="file" name="inside" accept="image/jpeg,image/png,image/webp,image/gif,image/avif" />
               </label>
             </div>
             <div class="form-actions">
@@ -100,7 +100,7 @@
             </div>
           </form>
           <form method="post" action="/admin/design/<%= entry.slug %>/trifolds/<%= i %>/delete"
-                onsubmit="return confirm('Delete this trifold? This cannot be undone.');">
+                data-confirm="Delete this trifold? This cannot be undone.">
             <button type="submit" class="link-button danger">Delete trifold</button>
           </form>
         </div>
@@ -116,11 +116,11 @@
           <div class="trifold-grid">
             <label class="field">
               <span>Outside</span>
-              <input type="file" name="outside" accept="image/*" required />
+              <input type="file" name="outside" accept="image/jpeg,image/png,image/webp,image/gif,image/avif" required />
             </label>
             <label class="field">
               <span>Inside</span>
-              <input type="file" name="inside" accept="image/*" required />
+              <input type="file" name="inside" accept="image/jpeg,image/png,image/webp,image/gif,image/avif" required />
             </label>
           </div>
           <div class="form-actions">

@@ -2,6 +2,7 @@ import 'dotenv/config';
 import express from 'express';
 import session from 'express-session';
 import rateLimit from 'express-rate-limit';
+import helmet from 'helmet';
 import bcrypt from 'bcryptjs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -16,6 +17,7 @@ import {
   deleteMediaFileDir,
   deleteEntryMedia,
   siteDirOf,
+  friendlyUploadError,
 } from './lib/upload.mjs';
 import { commitAndPush } from './lib/git.mjs';
 import { proxyTo } from './lib/proxy.mjs';
@@ -47,20 +49,50 @@ app.set('trust proxy', 1); // sitting behind a reverse proxy on the home server
 // ---------- everything admin-related lives under /admin ----------
 
 const admin = express.Router();
+
+// Security headers — scoped to /admin only (not the proxied public site,
+// which has its own headers from wherever it's actually served).
+admin.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'"], // every admin script is an external file — no inline handlers anywhere
+        styleSrc: ["'self'", 'https://fonts.googleapis.com'],
+        fontSrc: ["'self'", 'https://fonts.gstatic.com'],
+        imgSrc: ["'self'"],
+        mediaSrc: ["'self'"],
+        connectSrc: ["'self'"],
+        formAction: ["'self'"],
+        frameAncestors: ["'none'"], // this dashboard should never be embedded in another page
+        objectSrc: ["'none'"],
+        baseUri: ["'self'"],
+      },
+    },
+    frameguard: { action: 'deny' }, // X-Frame-Options backstop for browsers that don't honor CSP frame-ancestors
+  }),
+);
+
+// Blunt instrument against scripted abuse of any /admin endpoint, on top
+// of the much stricter limiter on /login below.
+admin.use(rateLimit({ windowMs: 10 * 60 * 1000, max: 300, standardHeaders: true, legacyHeaders: false }));
+
 admin.use(express.static(join(__dirname, 'public')));
 admin.use(express.urlencoded({ extended: true }));
 admin.use(express.json());
 
 admin.use(
   session({
+    name: 'portfolio_admin_sid', // avoid advertising "this is an Express app" via the default connect.sid name
     secret: SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      sameSite: 'lax',
+      sameSite: 'strict', // this dashboard never needs to send its cookie on a cross-site request — strict CSRF defense
       secure: process.env.COOKIE_SECURE === 'true',
       maxAge: 1000 * 60 * 60 * 12, // 12 hours
+      path: '/admin',
     },
   }),
 );
@@ -79,7 +111,13 @@ function requireAuth(req, res, next) {
   return res.redirect(303, '/admin/login');
 }
 
-const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, standardHeaders: true });
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: 'Too many login attempts. Wait a while and try again.',
+});
 
 // ---------- auth ----------
 
@@ -117,11 +155,7 @@ admin.get('/', requireAuth, (req, res) => {
 // ---------- site-wide content (singleton: src/content/site/global.md) ----------
 
 const SITE_FIELDS_FLAT = SITE_SECTIONS.flatMap((s) => s.fields);
-const siteUpload = upload.fields([
-  { name: 'aboutPhoto', maxCount: 1 },
-  { name: 'showreelVideo', maxCount: 1 },
-  { name: 'showreelVideoWebm', maxCount: 1 },
-]);
+const siteUpload = upload.fields([{ name: 'aboutPhoto', maxCount: 1 }]);
 
 function coerceSiteFields(body) {
   const data = {};
@@ -155,12 +189,6 @@ admin.post('/site', requireAuth, siteUpload, async (req, res) => {
 
     const photoFile = req.files?.aboutPhoto?.[0];
     if (photoFile) fields.aboutPhoto = placeUpload(photoFile, { publicDir: 'media', baseName: 'about-photo' });
-
-    const videoFile = req.files?.showreelVideo?.[0];
-    if (videoFile) fields.showreelVideo = placeUpload(videoFile, { publicDir: 'media', baseName: 'showreel' });
-
-    const webmFile = req.files?.showreelVideoWebm?.[0];
-    if (webmFile) fields.showreelVideoWebm = placeUpload(webmFile, { publicDir: 'media', baseName: 'showreel-webm' });
 
     upsertEntry('site', 'global', fields);
     const result = await commitAndPush('Admin: update site content');
@@ -576,6 +604,18 @@ admin.post('/design/:slug/trifolds/:index/delete', requireAuth, async (req, res)
     setFlash(req, 'error', `Could not delete: ${err.message}`);
   }
   res.redirect(303, `/admin/design/${slug}/edit#trifolds`);
+});
+
+// Catches anything thrown above (most notably a multer/fileFilter upload
+// rejection, which happens before any route handler's own try/catch runs)
+// and shows a clean message instead of leaking a raw stack trace — which
+// by default includes internal file paths and dependency internals — to
+// the browser.
+// eslint-disable-next-line no-unused-vars
+admin.use((err, req, res, next) => {
+  console.error(err);
+  res.status(err.status && err.status < 500 ? err.status : 400);
+  res.render('error', { message: friendlyUploadError(err) });
 });
 
 app.use('/admin', admin);

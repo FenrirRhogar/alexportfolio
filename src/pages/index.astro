@@ -54,20 +54,6 @@ const featured = [
     </p>
   </section>
 
-  {site.showreelVideo && (
-    <section class="px-6 md:px-10 pb-24">
-      <div class="relative aspect-video overflow-hidden rounded-sm max-w-6xl mx-auto">
-        <video class="h-full w-full object-cover" autoplay muted loop playsinline>
-          {site.showreelVideoWebm && <source src={withBase(site.showreelVideoWebm)} type="video/webm" />}
-          <source src={withBase(site.showreelVideo)} type="video/mp4" />
-        </video>
-      </div>
-      {site.showreelCaption && (
-        <p class="mt-4 text-xs uppercase tracking-widest text-ink-soft max-w-6xl mx-auto">{site.showreelCaption}</p>
-      )}
-    </section>
-  )}
-
   <section class="px-6 md:px-10 pb-24">
     <div class="flex items-baseline justify-between mb-10 max-w-6xl mx-auto">
       <h2 class="font-display italic text-3xl md:text-4xl">Selected Work</h2>

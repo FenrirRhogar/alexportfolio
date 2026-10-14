@@ -26,7 +26,7 @@
       </div>
       <div class="entry-actions">
         <a href="/admin/<%= schema.key %>/<%= e.slug %>/edit">Edit</a>
-        <form method="post" action="/admin/<%= schema.key %>/<%= e.slug %>/delete" onsubmit="return confirm('Delete &quot;' + <%- JSON.stringify(e.data.title) %> + '&quot;? This cannot be undone.');">
+        <form method="post" action="/admin/<%= schema.key %>/<%= e.slug %>/delete" data-confirm="Delete &quot;<%= e.data.title %>&quot;? This cannot be undone.">
           <button type="submit" class="link-button danger">Delete</button>
         </form>
       </div>

@@ -1,0 +1,11 @@
+<%- include('partials/header', { title: 'Error', hideNav: true }) %>
+
+<div class="login-box text-center">
+  <h1>Something went wrong</h1>
+  <p class="muted"><%= message %></p>
+  <div class="form-actions">
+    <a href="/admin" class="button">← Back to dashboard</a>
+  </div>
+</div>
+
+<%- include('partials/footer') %>

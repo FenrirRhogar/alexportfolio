@@ -142,6 +142,49 @@ existing auth or network restrictions, not sit directly on the open
 internet — the password login and rate limiting are there as a second
 layer, not the only one.
 
+## Security
+
+A rundown of what's actually protecting this, for your own peace of mind:
+
+- **Login**: a single bcrypt-hashed password, rate-limited to 10 attempts
+  per 15 minutes per IP. Pick a real, unique password when you generate
+  the hash above — it's the only thing standing between the internet and
+  write access to the whole site if this ever ends up reachable from
+  outside your network.
+- **Sessions**: the cookie is `HttpOnly` (invisible to any JavaScript,
+  including an attacker's), `SameSite=Strict` (never sent on a request
+  originating from another site — the standard, modern defense against
+  CSRF), scoped to the `/admin` path only, and named something other than
+  Express's default so it doesn't advertise what's running. Only set
+  `secure` (`COOKIE_SECURE=true`) once you're actually on HTTPS, or the
+  cookie won't be sent at all and you'll get stuck in a login loop.
+- **Uploads**: only JPG/PNG/WEBP/GIF/AVIF images, MP4/WEBM video, and (for
+  a flipbook's optional source file) PDF are accepted — checked by the
+  file's actual declared type, not its name. SVG is deliberately excluded
+  even though it's "an image": it can contain a `<script>` that runs if
+  the file is ever opened directly. Whatever extension lands on disk is
+  derived from that verified type too, never from the filename you upload
+  — so there's no way to upload something named `photo.jpg` that's
+  secretly HTML and get it served back as HTML.
+- **Headers**: a strict Content-Security-Policy (no inline scripts
+  anywhere in the dashboard, nothing loads from a third party except
+  Google Fonts), clickjacking protection (this dashboard refuses to be
+  iframed), and `X-Content-Type-Options: nosniff` so browsers never guess
+  a file's type from its content. Scoped to `/admin` only — the public
+  site's own responses pass through this server untouched.
+- **Errors**: never shown as a raw stack trace (which would leak internal
+  file paths) — logged to the server's own console for you to debug, with
+  a plain, safe message on screen.
+
+What this deliberately doesn't do: a full CSRF-token system on top of
+`SameSite=Strict` (redundant for a single-admin tool on modern browsers,
+and would mean threading a token through every upload route), or
+magic-byte content sniffing on top of the declared-type check (the
+type-locked extension plus `nosniff` already closes the realistic attack
+this would catch). If you ever expose this past your home network, put it
+behind your reverse proxy's own auth/IP allowlist too, same as any other
+internal tool.
+
 ## Day-to-day use
 
 Give Alexandra the URL (whatever your reverse proxy maps to this) and the
