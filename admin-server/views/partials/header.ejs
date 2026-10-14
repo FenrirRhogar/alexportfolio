@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= title %> — Portfolio Admin</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <% if (typeof hideNav === 'undefined' || !hideNav) { %>
+  <header class="topbar">
+    <a href="/" class="brand">Portfolio Admin</a>
+    <nav>
+      <a href="/design">Design</a>
+      <a href="/motion">Motion</a>
+      <a href="/fineart">Fine Art</a>
+    </nav>
+    <form method="post" action="/logout" class="logout-form">
+      <button type="submit">Log out</button>
+    </form>
+  </header>
+  <% } %>
+  <main class="container">
+    <% if (typeof flash !== 'undefined' && flash) { %>
+      <div class="flash <%= flash.type %>"><%= flash.message %></div>
+    <% } %>

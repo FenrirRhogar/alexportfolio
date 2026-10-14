@@ -1,0 +1,15 @@
+services:
+  admin:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # overrides the .env value — /site is where the repo is mounted
+      # *inside* the container, regardless of its real path on the host
+      SITE_REPO_PATH: /site
+    volumes:
+      - ${SITE_REPO_HOST_PATH}:/site
+      - ${SSH_KEY_HOST_PATH}:/root/.ssh/id_ed25519:ro
+      - ./known_hosts:/root/.ssh/known_hosts:ro
+    ports:
+      - '3000:3000'

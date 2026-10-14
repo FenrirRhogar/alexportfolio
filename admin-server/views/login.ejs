@@ -1,0 +1,14 @@
+<%- include('partials/header', { title: 'Log in', hideNav: true }) %>
+
+<div class="login-box">
+  <h1>Portfolio Admin</h1>
+  <form method="post" action="/login">
+    <label>
+      Password
+      <input type="password" name="password" autofocus required />
+    </label>
+    <button type="submit">Log in</button>
+  </form>
+</div>
+
+<%- include('partials/footer') %>

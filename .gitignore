@@ -20,3 +20,6 @@ node_modules/
 # raw Google Drive export — source material already pulled into public/media/,
 # safe to delete once you've confirmed nothing else is needed from it
 WORK-*/
+
+# admin-server scratch space for in-progress uploads
+.uploads-tmp/

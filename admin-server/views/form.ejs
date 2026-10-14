@@ -1,0 +1,90 @@
+<%- include('partials/header', { title: (entry ? 'Edit' : 'New') + ' ' + schema.singular, flash }) %>
+
+<div class="list-header">
+  <h1><%= entry ? 'Edit' : 'New' %> <%= schema.singular.toLowerCase() %></h1>
+  <a href="/<%= schema.key %>">← Back to list</a>
+</div>
+
+<% const notice = entry && schema.readOnlyNotice ? schema.readOnlyNotice(entry.data) : null; %>
+<% if (notice) { %>
+  <div class="flash info"><%= notice %></div>
+<% } %>
+
+<form method="post" enctype="multipart/form-data" class="entry-form">
+  <% schema.fields.forEach((f) => { %>
+    <label class="field">
+      <span><%= f.label %><% if (f.required) { %> *<% } %></span>
+      <% const value = entry ? entry.data[f.name] : f.default; %>
+
+      <% if (f.type === 'textarea') { %>
+        <textarea name="<%= f.name %>" rows="3" <%= f.required ? 'required' : '' %>><%= value || '' %></textarea>
+      <% } else if (f.type === 'checkbox') { %>
+        <input type="checkbox" name="<%= f.name %>" <%= value ? 'checked' : '' %> />
+      <% } else if (f.type === 'select') { %>
+        <select name="<%= f.name %>">
+          <% f.options.forEach((opt) => { %>
+            <option value="<%= opt %>" <%= value === opt ? 'selected' : '' %>><%= opt || '—' %></option>
+          <% }) %>
+        </select>
+      <% } else if (f.type === 'tags') { %>
+        <input type="text" name="<%= f.name %>" placeholder="<%= f.placeholder || '' %>"
+          value="<%= Array.isArray(value) ? value.join(', ') : (value || '') %>" />
+      <% } else { %>
+        <input type="text" name="<%= f.name %>" placeholder="<%= f.placeholder || '' %>"
+          value="<%= value || '' %>" <%= f.required ? 'required' : '' %> />
+      <% } %>
+    </label>
+  <% }) %>
+
+  <label class="field">
+    <span>Description (shown on the project page)</span>
+    <textarea name="body" rows="5"><%= entry ? entry.body : '' %></textarea>
+  </label>
+
+  <% // single-file fields: cover / image / poster / video / videoWebm
+     const singleFields = [schema.image, schema.poster, schema.video, schema.videoWebm].filter(Boolean);
+  %>
+  <% singleFields.forEach((f) => { %>
+    <label class="field">
+      <span><%= f.label %><% if (!entry && !f.optional) { %> *<% } %></span>
+      <% const current = entry ? entry.data[f.name] : null; %>
+      <% if (current) { %>
+        <div class="current-media">
+          <% if (f.kind === 'video') { %>
+            <video src="<%= current %>" controls muted></video>
+          <% } else { %>
+            <img src="<%= current %>" alt="" />
+          <% } %>
+          <span class="muted">current file — choose a new one below to replace it</span>
+        </div>
+      <% } %>
+      <input type="file" name="<%= f.name %>" accept="<%= f.kind === 'video' ? 'video/*' : 'image/*' %>"
+        <%= (!entry && !f.optional) ? 'required' : '' %> />
+    </label>
+  <% }) %>
+
+  <% if (schema.gallery) { %>
+    <div class="field">
+      <span><%= schema.gallery.label %></span>
+      <% const galleryItems = entry ? (entry.data[schema.gallery.name] || []) : []; %>
+      <% if (galleryItems.length) { %>
+        <div class="gallery-grid">
+          <% galleryItems.forEach((src, i) => { %>
+            <label class="gallery-item">
+              <img src="<%= src %>" alt="" />
+              <span><input type="checkbox" name="removeGallery" value="<%= src %>" /> Remove</span>
+            </label>
+          <% }) %>
+        </div>
+      <% } %>
+      <input type="file" name="galleryNew" accept="image/*" multiple />
+      <span class="muted">Add more images to the gallery (existing ones stay unless checked "Remove" above).</span>
+    </div>
+  <% } %>
+
+  <div class="form-actions">
+    <button type="submit">Save</button>
+  </div>
+</form>
+
+<%- include('partials/footer') %>

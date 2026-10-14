@@ -1,0 +1,43 @@
+<%- include('partials/header', { title: schema.label, flash }) %>
+
+<div class="list-header">
+  <h1><%= schema.label %></h1>
+  <a class="button" href="/<%= schema.key %>/new">+ Add new</a>
+</div>
+
+<p class="hint">Drag the ⠿ handle to reorder — the homepage and category page show them in this order.</p>
+
+<ul class="entry-list" id="entry-list" data-collection="<%= schema.key %>">
+  <% entries.forEach((e) => { %>
+    <li class="entry-row" draggable="true" data-slug="<%= e.slug %>">
+      <span class="handle">⠿</span>
+      <% const thumb = e.data[schema.image?.name] || e.data[schema.poster?.name]; %>
+      <% if (thumb) { %>
+        <img class="thumb" src="<%= thumb %>" alt="" />
+      <% } else { %>
+        <span class="thumb thumb-empty"></span>
+      <% } %>
+      <div class="entry-info">
+        <strong><%= e.data.title %></strong>
+        <span class="muted">
+          <%= [e.data.category || e.data.role || e.data.medium, e.data.year].filter(Boolean).join(' — ') %>
+          <% if (e.data.featured) { %> · featured<% } %>
+        </span>
+      </div>
+      <div class="entry-actions">
+        <a href="/<%= schema.key %>/<%= e.slug %>/edit">Edit</a>
+        <form method="post" action="/<%= schema.key %>/<%= e.slug %>/delete" onsubmit="return confirm('Delete &quot;' + <%- JSON.stringify(e.data.title) %> + '&quot;? This cannot be undone.');">
+          <button type="submit" class="link-button danger">Delete</button>
+        </form>
+      </div>
+    </li>
+  <% }) %>
+</ul>
+
+<% if (entries.length === 0) { %>
+  <p class="muted">Nothing here yet — click "Add new" above to create the first one.</p>
+<% } %>
+
+<script src="/reorder.js"></script>
+
+<%- include('partials/footer') %>

@@ -1,0 +1,14 @@
+<%- include('partials/header', { title: 'Dashboard', flash }) %>
+
+<h1>What would you like to edit?</h1>
+
+<div class="card-grid">
+  <% collections.forEach((c) => { %>
+    <a class="card" href="/<%= c.key %>">
+      <h2><%= c.label %></h2>
+      <p><%= c.count %> <%= c.count === 1 ? c.singular.toLowerCase() : c.singular.toLowerCase() + 's' %></p>
+    </a>
+  <% }) %>
+</div>
+
+<%- include('partials/footer') %>
