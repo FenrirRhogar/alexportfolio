@@ -7,7 +7,11 @@
     "dev": "astro dev",
     "start": "astro dev",
     "build": "astro build",
-    "preview": "astro preview"
+    "preview": "astro preview",
+    "new": "node scripts/new-entry.mjs",
+    "new:design": "node scripts/new-entry.mjs design",
+    "new:motion": "node scripts/new-entry.mjs motion",
+    "new:fineart": "node scripts/new-entry.mjs fineart"
   },
   "dependencies": {
     "astro": "^7.3.2",
