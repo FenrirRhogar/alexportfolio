@@ -32,18 +32,18 @@ const meta = [category, client, year].filter(Boolean).join(' — ');
       )}
     </header>
 
-    <div class="mb-16">
+    <div class="mb-16 max-w-4xl mx-auto">
       <img src={withBase(cover)} alt={title} class="w-full h-auto" />
     </div>
 
-    <div class="grid md:grid-cols-3 gap-16">
+    <div class="grid md:grid-cols-3 gap-16 max-w-5xl mx-auto">
       <div class="md:col-span-2 prose-content font-sans text-lg leading-relaxed text-ink-soft max-w-2xl">
         <Content />
       </div>
     </div>
 
     {gallery.length > 0 && (
-      <div class="mt-20 columns-1 sm:columns-2 gap-8">
+      <div class="mt-20 columns-1 sm:columns-2 gap-8 max-w-4xl mx-auto">
         {gallery.map((img: string) => (
           <img src={withBase(img)} alt="" class="w-full h-auto mb-8 break-inside-avoid" />
         ))}
