@@ -1,0 +1,62 @@
+<%- include('partials/header', { title: 'Site content', flash }) %>
+
+<div class="list-header">
+  <h1>Site content</h1>
+  <a href="/" target="_blank" rel="noopener" class="button ghost small">View site ↗</a>
+</div>
+<p class="hint">Everything here is the text, links, and images shown around the site — the homepage, About, Contact, and footer — outside of your Design/Motion/Fine Art projects themselves.</p>
+
+<form method="post" enctype="multipart/form-data" class="entry-form">
+  <% sections.forEach((section) => { %>
+    <div class="media-card">
+      <h3><%= section.heading %></h3>
+      <% section.fields.forEach((f) => { %>
+        <% const value = site[f.name]; %>
+        <%- include('partials/field', { f, value }) %>
+      <% }) %>
+
+      <% if (section.heading === 'Homepage — showreel') { %>
+        <label class="field">
+          <span>Showreel video (mp4)</span>
+          <% if (site.showreelVideo) { %>
+            <div class="current-media">
+              <video src="<%= site.showreelVideo %>" controls muted></video>
+              <span class="muted">current file — choose a new one below to replace it</span>
+            </div>
+          <% } %>
+          <input type="file" name="showreelVideo" accept="video/mp4" />
+        </label>
+        <label class="field">
+          <span>Showreel video (webm, optional — smaller file, used when supported)</span>
+          <% if (site.showreelVideoWebm) { %>
+            <div class="current-media">
+              <video src="<%= site.showreelVideoWebm %>" controls muted></video>
+              <span class="muted">current file — choose a new one below to replace it</span>
+            </div>
+          <% } %>
+          <input type="file" name="showreelVideoWebm" accept="video/webm" />
+        </label>
+      <% } %>
+
+      <% if (section.heading === 'About page') { %>
+        <label class="field">
+          <span>Photo</span>
+          <% if (site.aboutPhoto) { %>
+            <div class="current-media">
+              <img src="<%= site.aboutPhoto %>" alt="" />
+              <span class="muted">current photo — choose a new one below to replace it, or remove it entirely</span>
+            </div>
+            <span><input type="checkbox" name="removeAboutPhoto" value="1" /> Remove this photo (hide it on the About page)</span>
+          <% } %>
+          <input type="file" name="aboutPhoto" accept="image/*" />
+        </label>
+      <% } %>
+    </div>
+  <% }) %>
+
+  <div class="form-actions">
+    <button type="submit">Save</button>
+  </div>
+</form>
+
+<%- include('partials/footer') %>

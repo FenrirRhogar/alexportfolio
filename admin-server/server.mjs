@@ -5,8 +5,8 @@ import rateLimit from 'express-rate-limit';
 import bcrypt from 'bcryptjs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { COLLECTIONS, getCollection } from './lib/schema.mjs';
-import { listEntries, getEntry, createEntry, updateEntry, deleteEntry, reorderEntries } from './lib/content.mjs';
+import { COLLECTIONS, getCollection, SITE_SECTIONS } from './lib/schema.mjs';
+import { listEntries, getEntry, createEntry, updateEntry, upsertEntry, deleteEntry, reorderEntries } from './lib/content.mjs';
 import {
   upload,
   placeUpload,
@@ -112,6 +112,64 @@ admin.get('/', requireAuth, (req, res) => {
     count: listEntries(c.key).length,
   }));
   res.render('dashboard', { collections, flash: flash(req) });
+});
+
+// ---------- site-wide content (singleton: src/content/site/global.md) ----------
+
+const SITE_FIELDS_FLAT = SITE_SECTIONS.flatMap((s) => s.fields);
+const siteUpload = upload.fields([
+  { name: 'aboutPhoto', maxCount: 1 },
+  { name: 'showreelVideo', maxCount: 1 },
+  { name: 'showreelVideoWebm', maxCount: 1 },
+]);
+
+function coerceSiteFields(body) {
+  const data = {};
+  for (const f of SITE_FIELDS_FLAT) {
+    if (f.type === 'tags') {
+      data[f.name] = (body[f.name] || '')
+        .split(',')
+        .map((t) => t.trim())
+        .filter(Boolean);
+    } else {
+      data[f.name] = (body[f.name] || '').trim();
+    }
+  }
+  return data;
+}
+
+admin.get('/site', requireAuth, (req, res) => {
+  const entry = getEntry('site', 'global');
+  res.render('site', { sections: SITE_SECTIONS, site: entry?.data || {}, flash: flash(req) });
+});
+
+admin.post('/site', requireAuth, siteUpload, async (req, res) => {
+  try {
+    const existing = getEntry('site', 'global');
+    const fields = coerceSiteFields(req.body);
+
+    if (req.body.removeAboutPhoto && existing?.data.aboutPhoto) {
+      deleteMediaFile(existing.data.aboutPhoto);
+      fields.aboutPhoto = '';
+    }
+
+    const photoFile = req.files?.aboutPhoto?.[0];
+    if (photoFile) fields.aboutPhoto = placeUpload(photoFile, { publicDir: 'media', baseName: 'about-photo' });
+
+    const videoFile = req.files?.showreelVideo?.[0];
+    if (videoFile) fields.showreelVideo = placeUpload(videoFile, { publicDir: 'media', baseName: 'showreel' });
+
+    const webmFile = req.files?.showreelVideoWebm?.[0];
+    if (webmFile) fields.showreelVideoWebm = placeUpload(webmFile, { publicDir: 'media', baseName: 'showreel-webm' });
+
+    upsertEntry('site', 'global', fields);
+    const result = await commitAndPush('Admin: update site content');
+    setFlash(req, result.pushed ? 'success' : 'error', `Saved. ${result.message}`);
+  } catch (err) {
+    console.error(err);
+    setFlash(req, 'error', `Could not save: ${err.message}`);
+  }
+  res.redirect(303, '/admin/site');
 });
 
 // ---------- helpers shared by the collection routes ----------

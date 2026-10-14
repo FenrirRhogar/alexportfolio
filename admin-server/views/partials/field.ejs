@@ -1,0 +1,22 @@
+<label class="field">
+  <span><%= f.label %><% if (f.required) { %> *<% } %></span>
+
+  <% if (f.type === 'textarea') { %>
+    <textarea name="<%= f.name %>" rows="<%= f.rows || 3 %>" <%= f.required ? 'required' : '' %>><%= value || '' %></textarea>
+  <% } else if (f.type === 'checkbox') { %>
+    <input type="checkbox" name="<%= f.name %>" <%= value ? 'checked' : '' %> />
+  <% } else if (f.type === 'select') { %>
+    <select name="<%= f.name %>">
+      <% f.options.forEach((opt) => { %>
+        <option value="<%= opt %>" <%= value === opt ? 'selected' : '' %>><%= opt || '—' %></option>
+      <% }) %>
+    </select>
+  <% } else if (f.type === 'tags') { %>
+    <input type="text" name="<%= f.name %>" placeholder="<%= f.placeholder || '' %>"
+      value="<%= Array.isArray(value) ? value.join(', ') : (value || '') %>" />
+  <% } else { %>
+    <input type="text" name="<%= f.name %>" placeholder="<%= f.placeholder || '' %>"
+      value="<%= value || '' %>" <%= f.required ? 'required' : '' %> />
+  <% } %>
+  <% if (f.hint) { %><span class="muted"><%= f.hint %></span><% } %>
+</label>

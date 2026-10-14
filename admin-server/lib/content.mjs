@@ -97,6 +97,14 @@ export function updateEntry(collectionKey, slug, formData, mediaPaths) {
   writeEntry(collectionKey, slug, data, body);
 }
 
+/** Writes an entry unconditionally, creating it if it doesn't exist yet —
+ * used for the singleton "site" record, which (unlike design/motion/
+ * fineart entries) is never created through the usual new-entry flow. */
+export function upsertEntry(collectionKey, slug, data, body = '') {
+  const existing = getEntry(collectionKey, slug);
+  writeEntry(collectionKey, slug, { ...(existing?.data || {}), ...data }, body || existing?.body || '');
+}
+
 export function deleteEntry(collectionKey, slug) {
   const file = join(contentDir(collectionKey), `${slug}.md`);
   if (existsSync(file)) unlinkSync(file);

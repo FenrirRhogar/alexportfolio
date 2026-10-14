@@ -9,6 +9,10 @@
       <p><%= c.count %> <%= c.count === 1 ? c.singular.toLowerCase() : c.singular.toLowerCase() + 's' %></p>
     </a>
   <% }) %>
+  <a class="card" href="/admin/site">
+    <h2>⚙️ Site content</h2>
+    <p>Homepage, About, Contact, footer — all the text and links around your projects</p>
+  </a>
 </div>
 
 <%- include('partials/footer') %>

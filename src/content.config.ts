@@ -72,4 +72,38 @@ const fineart = defineCollection({
   }),
 });
 
-export const collections = { design, motion, fineart };
+// a singleton — one entry ("global"), holding every bit of site-wide text
+// (hero, about bio, contact blurb, social links, ...) that would otherwise
+// be hardcoded in the page templates, so it's editable from the admin
+// dashboard instead of requiring a code change.
+const site = defineCollection({
+  loader: glob({ pattern: '**/*.md', base: './src/content/site' }),
+  schema: z.object({
+    brandName: z.string(),
+    email: z.string(),
+    instagram: z.string().optional(),
+    linkedin: z.string().optional(),
+
+    heroEyebrow: z.string(),
+    heroHeading: z.string(),
+    heroSubheading: z.string(),
+
+    showreelCaption: z.string().optional(),
+    showreelVideo: z.string().optional(),
+    showreelVideoWebm: z.string().optional(),
+
+    aboutEyebrow: z.string(),
+    aboutHeading: z.string(),
+    aboutPhoto: z.string().optional(),
+    aboutBio: z.string(),
+    aboutAvailability: z.string().optional(),
+    skills: z.array(z.string()).default([]),
+
+    contactEyebrow: z.string(),
+    contactBlurb: z.string().optional(),
+
+    footerTagline: z.string(),
+  }),
+});
+
+export const collections = { design, motion, fineart, site };

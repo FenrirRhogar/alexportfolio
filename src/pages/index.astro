@@ -1,8 +1,10 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import ProjectTile from '../components/ProjectTile.astro';
-import { getCollection } from 'astro:content';
+import { getCollection, getEntry } from 'astro:content';
 import { withBase } from '../lib/url';
+
+const site = (await getEntry('site', 'global')).data;
 
 const design = (await getCollection('design')).filter((p) => p.data.featured);
 const motion = (await getCollection('motion')).filter((p) => p.data.featured);
@@ -39,39 +41,32 @@ const featured = [
   .slice(0, 6);
 ---
 
-<Layout title="Alexandra Patsi — Design, Motion & Fine Art">
+<Layout title={`${site.brandName} — Design, Motion & Fine Art`}>
   <section class="min-h-[70vh] flex flex-col justify-end px-6 md:px-10 pb-12 pt-24">
     <p class="fade-up text-sm uppercase tracking-[0.3em] text-ink-soft mb-6">
-      Designer — Editor — Painter
+      {site.heroEyebrow}
     </p>
-    <h1 class="fade-up font-display text-[10vw] md:text-[6vw] leading-[0.95] tracking-tight max-w-6xl">
-      Hi, I'm Alexandra. I make things
-      <span class="italic text-terracotta">look</span>,
-      <span class="italic text-dusty">move</span>, and
-      <span class="italic text-sage">feel</span> like something.
+    <h1 class="fade-up font-display italic text-[10vw] md:text-[6vw] leading-[0.95] tracking-tight max-w-6xl">
+      {site.heroHeading}
     </h1>
     <p class="fade-up mt-8 max-w-xl text-ink-soft text-lg">
-      A one-person studio working across brand design, video editing, and painting —
-      based wherever the light is good that week.
+      {site.heroSubheading}
     </p>
   </section>
 
-  <section class="px-6 md:px-10 pb-24">
-    <div class="relative aspect-video overflow-hidden rounded-sm max-w-6xl mx-auto">
-      <video
-        class="h-full w-full object-cover"
-        autoplay
-        muted
-        loop
-        playsinline
-        poster={withBase('/media/showreel-poster.svg')}
-      >
-        <source src={withBase('/media/showreel.webm')} type="video/webm" />
-        <source src={withBase('/media/showreel.mp4')} type="video/mp4" />
-      </video>
-    </div>
-    <p class="mt-4 text-xs uppercase tracking-widest text-ink-soft max-w-6xl mx-auto">Showreel — 2025</p>
-  </section>
+  {site.showreelVideo && (
+    <section class="px-6 md:px-10 pb-24">
+      <div class="relative aspect-video overflow-hidden rounded-sm max-w-6xl mx-auto">
+        <video class="h-full w-full object-cover" autoplay muted loop playsinline>
+          {site.showreelVideoWebm && <source src={withBase(site.showreelVideoWebm)} type="video/webm" />}
+          <source src={withBase(site.showreelVideo)} type="video/mp4" />
+        </video>
+      </div>
+      {site.showreelCaption && (
+        <p class="mt-4 text-xs uppercase tracking-widest text-ink-soft max-w-6xl mx-auto">{site.showreelCaption}</p>
+      )}
+    </section>
+  )}
 
   <section class="px-6 md:px-10 pb-24">
     <div class="flex items-baseline justify-between mb-10 max-w-6xl mx-auto">

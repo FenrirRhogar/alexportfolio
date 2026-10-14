@@ -13,28 +13,8 @@
 
 <form method="post" enctype="multipart/form-data" class="entry-form">
   <% schema.fields.forEach((f) => { %>
-    <label class="field">
-      <span><%= f.label %><% if (f.required) { %> *<% } %></span>
-      <% const value = entry ? entry.data[f.name] : f.default; %>
-
-      <% if (f.type === 'textarea') { %>
-        <textarea name="<%= f.name %>" rows="3" <%= f.required ? 'required' : '' %>><%= value || '' %></textarea>
-      <% } else if (f.type === 'checkbox') { %>
-        <input type="checkbox" name="<%= f.name %>" <%= value ? 'checked' : '' %> />
-      <% } else if (f.type === 'select') { %>
-        <select name="<%= f.name %>">
-          <% f.options.forEach((opt) => { %>
-            <option value="<%= opt %>" <%= value === opt ? 'selected' : '' %>><%= opt || '—' %></option>
-          <% }) %>
-        </select>
-      <% } else if (f.type === 'tags') { %>
-        <input type="text" name="<%= f.name %>" placeholder="<%= f.placeholder || '' %>"
-          value="<%= Array.isArray(value) ? value.join(', ') : (value || '') %>" />
-      <% } else { %>
-        <input type="text" name="<%= f.name %>" placeholder="<%= f.placeholder || '' %>"
-          value="<%= value || '' %>" <%= f.required ? 'required' : '' %> />
-      <% } %>
-    </label>
+    <% const value = entry ? entry.data[f.name] : f.default; %>
+    <%- include('partials/field', { f, value }) %>
   <% }) %>
 
   <label class="field">

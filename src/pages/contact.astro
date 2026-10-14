@@ -1,27 +1,31 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import { getEntry } from 'astro:content';
+
+const site = (await getEntry('site', 'global')).data;
 ---
 
-<Layout title="Contact — Alexandra Patsi" description="Get in touch about design, motion, or fine art projects.">
+<Layout title={`Contact — ${site.brandName}`} description="Get in touch about design, motion, or fine art projects.">
   <section class="min-h-[80vh] flex flex-col items-center justify-center px-6 text-center">
     <p class="text-sm uppercase tracking-[0.3em] text-ink-soft mb-8 fade-up">
-      Say hello
+      {site.contactEyebrow}
     </p>
     <a
-      href="mailto:patshalexandra@gmail.com"
+      href={`mailto:${site.email}`}
       data-cursor-hover
       class="fade-up font-display italic text-[9vw] md:text-[5.5vw] leading-none hover:text-terracotta transition-colors duration-500 break-all"
     >
-      patshalexandra@gmail.com
+      {site.email}
     </a>
-    <p class="fade-up mt-10 max-w-md text-ink-soft">
-      For design, motion, or fine art inquiries — commissions, collaborations, and
-      the occasional wild idea are all welcome.
-    </p>
+    {site.contactBlurb && (
+      <p class="fade-up mt-10 max-w-md text-ink-soft">
+        {site.contactBlurb}
+      </p>
+    )}
 
     <div class="fade-up flex items-center gap-8 mt-14 text-sm uppercase tracking-widest text-ink-soft">
-      <a href="https://www.instagram.com/ma.name.is.not.alex/" data-cursor-hover class="link-hover" target="_blank" rel="noopener">Instagram</a>
-      <a href="https://www.linkedin.com/in/alexandra-patsi/" data-cursor-hover class="link-hover" target="_blank" rel="noopener">LinkedIn</a>
+      {site.instagram && <a href={site.instagram} data-cursor-hover class="link-hover" target="_blank" rel="noopener">Instagram</a>}
+      {site.linkedin && <a href={site.linkedin} data-cursor-hover class="link-hover" target="_blank" rel="noopener">LinkedIn</a>}
     </div>
   </section>
 </Layout>
