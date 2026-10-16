@@ -126,11 +126,17 @@ function publish() {
 // the header shows whether the last rebuild of the public site went through
 admin.use((req, res, next) => {
   res.locals.build = buildStatus();
+  res.locals.accessEmail = req.accessEmail;
   next();
 });
 
+// With Cloudflare Access configured, its verified email sign-in *is* the
+// login (requireCloudflareAccess has already rejected anything else); the
+// password below is only the fallback for when Access is switched off.
+const signedIn = (req) => Boolean(req.accessEmail || req.session.authed);
+
 function requireAuth(req, res, next) {
-  if (req.session.authed) return next();
+  if (signedIn(req)) return next();
   return res.redirect(303, '/admin/login');
 }
 
@@ -138,7 +144,7 @@ function requireAuth(req, res, next) {
 // ---------- auth ----------
 
 admin.get('/login', (req, res) => {
-  if (req.session.authed) return res.redirect(303, '/admin');
+  if (signedIn(req)) return res.redirect(303, '/admin');
   res.render('login', { flash: flash(req) });
 });
 
@@ -159,7 +165,9 @@ admin.post('/login', loginLimiterGlobal, loginLimiterPerIp, async (req, res, nex
 });
 
 admin.post('/logout', (req, res) => {
-  req.session.destroy(() => res.redirect(303, '/admin/login'));
+  // also end the Cloudflare Access session, or the next visit would sign
+  // straight back in
+  req.session.destroy(() => res.redirect(303, req.accessEmail ? '/cdn-cgi/access/logout' : '/admin/login'));
 });
 
 // ---------- dashboard ----------

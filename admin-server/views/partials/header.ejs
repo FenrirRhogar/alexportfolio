@@ -26,7 +26,7 @@
       <button type="submit"><%= build.state === 'building' ? 'Publishing…' : build.state === 'failed' ? '⚠ Publish failed — retry' : 'Republish' %></button>
     </form>
     <form method="post" action="/admin/logout" class="logout-form">
-      <button type="submit">Log out</button>
+      <button type="submit"<% if (accessEmail) { %> title="Signed in as <%= accessEmail %>"<% } %>>Log out<% if (accessEmail) { %> <span class="signed-in-as"><%= accessEmail %></span><% } %></button>
     </form>
   </header>
   <% } %>
