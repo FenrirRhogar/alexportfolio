@@ -1,0 +1,5 @@
+.env
+deploy_key
+deploy_key.pub
+known_hosts
+node_modules

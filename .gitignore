@@ -23,3 +23,8 @@ WORK-*/
 
 # admin-server scratch space for in-progress uploads
 .uploads-tmp/
+
+# admin-server deploy secrets — the admin app runs `git add -A`, so these must never be trackable
+admin-server/deploy_key
+admin-server/deploy_key.pub
+admin-server/known_hosts

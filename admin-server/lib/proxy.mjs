@@ -14,17 +14,39 @@ export function proxyTo(targetOrigin) {
   // forwarded request rather than just the bare origin.
   const basePath = target.pathname.replace(/\/$/, '');
 
+  // The built site's own links already include the base path (Astro bakes
+  // "/alexportfolio/..." into every href), so only add the prefix when the
+  // request doesn't carry it yet — otherwise it'd be doubled upstream.
+  const upstreamPath = (url) =>
+    !basePath || url === basePath || url.startsWith(basePath + '/') || url.startsWith(basePath + '?')
+      ? url
+      : basePath + url;
+
+  // Upstream redirects (e.g. GitHub Pages' trailing-slash 301s) point at the
+  // upstream's own absolute URL — make them root-relative so the visitor
+  // stays on this server's domain instead of being bounced to the origin.
+  const rewriteLocation = (location) => {
+    try {
+      const loc = new URL(location, target);
+      return loc.host === target.host ? loc.pathname + loc.search + loc.hash : location;
+    } catch {
+      return location;
+    }
+  };
+
   return (clientReq, clientRes) => {
     const proxyReq = doRequest(
       {
         hostname: target.hostname,
         port: target.port || (isHttps ? 443 : 80),
-        path: basePath + clientReq.url,
+        path: upstreamPath(clientReq.url),
         method: clientReq.method,
         headers: { ...clientReq.headers, host: target.host },
       },
       (proxyRes) => {
-        clientRes.writeHead(proxyRes.statusCode, proxyRes.headers);
+        const headers = { ...proxyRes.headers };
+        if (headers.location) headers.location = rewriteLocation(headers.location);
+        clientRes.writeHead(proxyRes.statusCode, headers);
         proxyRes.pipe(clientRes);
       },
     );
