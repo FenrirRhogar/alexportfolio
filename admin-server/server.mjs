@@ -304,6 +304,9 @@ admin.post('/rebuild', requireAuth, (req, res) => {
 // ---------- site-wide content (singleton: src/content/site/global.md) ----------
 
 const SITE_FIELDS_FLAT = SITE_SECTIONS.flatMap((s) => s.fields);
+
+// browsers submit textarea line breaks as \r\n — store plain \n
+const plain = (v) => String(v || '').replace(/\r\n?/g, '\n').trim();
 const siteUpload = upload.fields([{ name: 'aboutPhoto', maxCount: 1 }]);
 
 function coerceSiteFields(body) {
@@ -325,7 +328,7 @@ function coerceSiteFields(body) {
     } else {
       // a cleared field that has a default (menu labels, page headings…)
       // goes back to that default rather than leaving a blank on the site
-      data[f.name] = (body[f.name] || '').trim() || f.default || '';
+      data[f.name] = plain(body[f.name]) || f.default || '';
     }
   }
   return data;
@@ -372,7 +375,7 @@ function coerceFields(schema, body) {
         .map((t) => t.trim())
         .filter(Boolean);
     } else {
-      const val = (body[f.name] || '').trim();
+      const val = plain(body[f.name]);
       // every text/select field is always present in the submitted body
       // (the form never hides a field), so an empty value here means the
       // user genuinely cleared it — write that through rather than
@@ -380,7 +383,7 @@ function coerceFields(schema, body) {
       data[f.name] = !val && f.name === 'title' && f.default ? f.default : val;
     }
   }
-  data.body = (body.body || '').trim();
+  data.body = plain(body.body);
   return data;
 }
 
