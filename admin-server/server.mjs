@@ -19,26 +19,19 @@ import {
   siteDirOf,
   friendlyUploadError,
 } from './lib/upload.mjs';
-import { commitAndPush as gitCommitAndPush, syncFromRemote } from './lib/git.mjs';
 import { requestBuild, buildStatus } from './lib/build.mjs';
-import { proxyTo } from './lib/proxy.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3000;
 const PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH;
 const SESSION_SECRET = process.env.SESSION_SECRET;
-// where the public portfolio itself is served from — the Astro dev server
-// while testing, or wherever the built site is served from in production
-// (see README.md). Everything that isn't under /admin gets proxied there,
-// so visitors and Alexandra share one URL, with /admin as her edit panel.
-const PUBLIC_SITE_ORIGIN = process.env.PUBLIC_SITE_ORIGIN;
+// the public site is built into dist/ inside the site folder (lib/build.mjs)
+// and served from here, so visitors and Alexandra share one URL, with
+// /admin as her edit panel
+const SITE_DIST = join(process.env.SITE_REPO_PATH, 'dist');
 
 if (!PASSWORD_HASH || !SESSION_SECRET) {
   console.error('ADMIN_PASSWORD_HASH and SESSION_SECRET must be set — see .env.example');
-  process.exit(1);
-}
-if (!PUBLIC_SITE_ORIGIN) {
-  console.error('PUBLIC_SITE_ORIGIN must be set — see .env.example');
   process.exit(1);
 }
 
@@ -107,12 +100,11 @@ function setFlash(req, type, message) {
   req.session.flash = { type, message };
 }
 
-// Every save publishes by rebuilding the self-hosted site from the
-// checkout — kicked off in the background so the dashboard stays snappy.
-async function commitAndPush(message) {
-  const result = await gitCommitAndPush(message);
-  if (result.committed) requestBuild();
-  return result;
+// Every save publishes by rebuilding the public site — kicked off in the
+// background so the dashboard stays snappy.
+const PUBLISHED = 'Live on the site in a few seconds.';
+function publish() {
+  requestBuild();
 }
 
 // the header shows whether the last rebuild of the public site went through
@@ -212,8 +204,8 @@ admin.post('/site', requireAuth, siteUpload, async (req, res) => {
     if (photoFile) fields.aboutPhoto = placeUpload(photoFile, { publicDir: 'media', baseName: 'about-photo' });
 
     upsertEntry('site', 'global', fields);
-    const result = await commitAndPush('Admin: update site content');
-    setFlash(req, result.pushed ? 'success' : 'error', `Saved. ${result.message}`);
+    publish();
+    setFlash(req, 'success', `Saved. ${PUBLISHED}`);
   } catch (err) {
     console.error(err);
     setFlash(req, 'error', `Could not save: ${err.message}`);
@@ -312,7 +304,7 @@ for (const key of Object.keys(COLLECTIONS)) {
 
   admin.post(`/${key}/reorder`, requireAuth, async (req, res) => {
     reorderEntries(key, req.body.slugs || []);
-    await commitAndPush(`Admin: reorder ${key}`);
+    publish();
     res.json({ ok: true });
   });
 
@@ -330,8 +322,8 @@ for (const key of Object.keys(COLLECTIONS)) {
       if (schema.gallery) mediaPaths.gallery = placeGalleryUploads(schema, req.files, slug, []);
       updateEntry(key, slug, {}, mediaPaths);
 
-      const result = await commitAndPush(`Admin: add ${key}/${slug}`);
-      setFlash(req, result.pushed ? 'success' : 'error', `Created "${fields.title}". ${result.message}`);
+      publish();
+      setFlash(req, 'success', `Created "${fields.title}". ${PUBLISHED}`);
       res.redirect(303, `/admin/${key}`);
     } catch (err) {
       console.error(err);
@@ -364,8 +356,8 @@ for (const key of Object.keys(COLLECTIONS)) {
       }
 
       updateEntry(key, slug, fields, mediaPaths);
-      const result = await commitAndPush(`Admin: edit ${key}/${slug}`);
-      setFlash(req, result.pushed ? 'success' : 'error', `Saved. ${result.message}`);
+      publish();
+      setFlash(req, 'success', `Saved. ${PUBLISHED}`);
       res.redirect(303, `/admin/${key}`);
     } catch (err) {
       console.error(err);
@@ -378,8 +370,8 @@ for (const key of Object.keys(COLLECTIONS)) {
     const { slug } = req.params;
     deleteEntry(key, slug);
     deleteEntryMedia(key, slug);
-    const result = await commitAndPush(`Admin: delete ${key}/${slug}`);
-    setFlash(req, result.pushed ? 'success' : 'error', `Deleted. ${result.message}`);
+    publish();
+    setFlash(req, 'success', `Deleted. ${PUBLISHED}`);
     res.redirect(303, `/admin/${key}`);
   });
 }
@@ -426,8 +418,8 @@ admin.post('/design/:slug/booklets', requireAuth, bookletCreateUpload, async (re
 
     const booklets = [...(entry.data.booklets || []), booklet];
     updateEntry('design', slug, {}, { booklets });
-    const result = await commitAndPush(`Admin: add flipbook to design/${slug}`);
-    setFlash(req, result.pushed ? 'success' : 'error', `Flipbook added. ${result.message}`);
+    publish();
+    setFlash(req, 'success', `Flipbook added. ${PUBLISHED}`);
   } catch (err) {
     console.error(err);
     setFlash(req, 'error', `Could not add flipbook: ${err.message}`);
@@ -451,8 +443,8 @@ admin.post('/design/:slug/booklets/:index/pages', requireAuth, bookletPagesUploa
     const added = placeMultiple(newFiles, { publicDir, prefix: 'page' });
     booklets[idx] = { ...booklet, pages: [...booklet.pages, ...added] };
     updateEntry('design', slug, {}, { booklets });
-    const result = await commitAndPush(`Admin: add pages to a design/${slug} flipbook`);
-    setFlash(req, result.pushed ? 'success' : 'error', `Pages added. ${result.message}`);
+    publish();
+    setFlash(req, 'success', `Pages added. ${PUBLISHED}`);
   } catch (err) {
     console.error(err);
     setFlash(req, 'error', `Could not add pages: ${err.message}`);
@@ -475,7 +467,7 @@ admin.post('/design/:slug/booklets/:index/reorder-pages', requireAuth, async (re
 
   booklets[idx] = { ...booklet, pages: incoming };
   updateEntry('design', slug, {}, { booklets });
-  await commitAndPush(`Admin: reorder a design/${slug} flipbook's pages`);
+  publish();
   res.json({ ok: true });
 });
 
@@ -493,8 +485,8 @@ admin.post('/design/:slug/booklets/:index/delete-page', requireAuth, async (req,
     deleteMediaFile(page);
     booklets[idx] = { ...booklet, pages: booklet.pages.filter((p) => p !== page) };
     updateEntry('design', slug, {}, { booklets });
-    const result = await commitAndPush(`Admin: remove a page from a design/${slug} flipbook`);
-    setFlash(req, result.pushed ? 'success' : 'error', `Page removed. ${result.message}`);
+    publish();
+    setFlash(req, 'success', `Page removed. ${PUBLISHED}`);
   } catch (err) {
     console.error(err);
     setFlash(req, 'error', `Could not remove page: ${err.message}`);
@@ -520,8 +512,8 @@ admin.post('/design/:slug/booklets/:index/rename', requireAuth, bookletRenameUpl
     }
     booklets[idx] = updated;
     updateEntry('design', slug, {}, { booklets });
-    const result = await commitAndPush(`Admin: update a design/${slug} flipbook`);
-    setFlash(req, result.pushed ? 'success' : 'error', `Saved. ${result.message}`);
+    publish();
+    setFlash(req, 'success', `Saved. ${PUBLISHED}`);
   } catch (err) {
     console.error(err);
     setFlash(req, 'error', `Could not save: ${err.message}`);
@@ -542,8 +534,8 @@ admin.post('/design/:slug/booklets/:index/delete', requireAuth, async (req, res)
     if (booklet.pages[0]) deleteMediaFileDir(booklet.pages[0]);
     booklets.splice(idx, 1);
     updateEntry('design', slug, {}, { booklets });
-    const result = await commitAndPush(`Admin: delete a flipbook from design/${slug}`);
-    setFlash(req, result.pushed ? 'success' : 'error', `Flipbook deleted. ${result.message}`);
+    publish();
+    setFlash(req, 'success', `Flipbook deleted. ${PUBLISHED}`);
   } catch (err) {
     console.error(err);
     setFlash(req, 'error', `Could not delete: ${err.message}`);
@@ -568,8 +560,8 @@ admin.post('/design/:slug/trifolds', requireAuth, trifoldUpload, async (req, res
     };
     const trifolds = [...(entry.data.trifolds || []), trifold];
     updateEntry('design', slug, {}, { trifolds });
-    const result = await commitAndPush(`Admin: add trifold to design/${slug}`);
-    setFlash(req, result.pushed ? 'success' : 'error', `Trifold added. ${result.message}`);
+    publish();
+    setFlash(req, 'success', `Trifold added. ${PUBLISHED}`);
   } catch (err) {
     console.error(err);
     setFlash(req, 'error', `Could not add trifold: ${err.message}`);
@@ -596,8 +588,8 @@ admin.post('/design/:slug/trifolds/:index', requireAuth, trifoldUpload, async (r
 
     trifolds[idx] = updated;
     updateEntry('design', slug, {}, { trifolds });
-    const result = await commitAndPush(`Admin: update a design/${slug} trifold`);
-    setFlash(req, result.pushed ? 'success' : 'error', `Saved. ${result.message}`);
+    publish();
+    setFlash(req, 'success', `Saved. ${PUBLISHED}`);
   } catch (err) {
     console.error(err);
     setFlash(req, 'error', `Could not save: ${err.message}`);
@@ -618,8 +610,8 @@ admin.post('/design/:slug/trifolds/:index/delete', requireAuth, async (req, res)
     deleteMediaFileDir(trifold.outside);
     trifolds.splice(idx, 1);
     updateEntry('design', slug, {}, { trifolds });
-    const result = await commitAndPush(`Admin: delete a trifold from design/${slug}`);
-    setFlash(req, result.pushed ? 'success' : 'error', `Trifold deleted. ${result.message}`);
+    publish();
+    setFlash(req, 'success', `Trifold deleted. ${PUBLISHED}`);
   } catch (err) {
     console.error(err);
     setFlash(req, 'error', `Could not delete: ${err.message}`);
@@ -641,27 +633,22 @@ admin.use((err, req, res, next) => {
 
 app.use('/admin', admin);
 
-// ---------- everything else: proxy through to the public site ----------
-// so Alexandra (and everyone else) can use one URL — the public pages at
-// "/", her edit panel at "/admin" — regardless of where the public site
-// is actually served from.
+// ---------- everything else: the public site ----------
 
-app.use(proxyTo(PUBLIC_SITE_ORIGIN));
+app.use(
+  express.static(SITE_DIST, {
+    extensions: ['html'],
+    setHeaders(res, path) {
+      // Astro fingerprints everything under _astro/, so it can be cached forever
+      if (path.includes('/_astro/')) res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    },
+  }),
+);
+app.use((req, res) => res.status(404).type('text').send('Not found'));
 
-// Pick up commits pushed to GitHub from elsewhere (e.g. a laptop) and
-// rebuild when any arrive. Also builds once at startup so dist/ always
-// matches the checkout.
-const SYNC_INTERVAL_MS = Number(process.env.SYNC_INTERVAL_SECONDS || 60) * 1000;
-async function syncAndBuild() {
-  try {
-    if ((await syncFromRemote()).changed) requestBuild();
-  } catch (err) {
-    console.error('Sync with GitHub failed:', err.stderr || err.message);
-  }
-}
+// build once at startup so dist/ always matches the content on disk
 requestBuild();
-setInterval(syncAndBuild, SYNC_INTERVAL_MS);
 
 app.listen(PORT, () => {
-  console.log(`Portfolio admin listening on http://localhost:${PORT} (public site proxied from ${PUBLIC_SITE_ORIGIN})`);
+  console.log(`Portfolio listening on http://localhost:${PORT} (public site at /, dashboard at /admin)`);
 });
