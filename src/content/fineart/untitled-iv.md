@@ -1,7 +1,7 @@
 ---
-title: "Untitled IV"
-medium: "Pen and ink on paper"
-image: "/media/fineart/untitled-04.jpg"
+title: Untitled IV
+medium: Pen and ink on paper
+image: /media/fineart/untitled-04.jpg
 featured: false
 order: 4
 ---

@@ -2,10 +2,15 @@
 
 <div class="login-box">
   <h1>Portfolio Admin</h1>
+  <% if (typeof error !== 'undefined' && error) { %>
+    <div class="flash error"><%= error %></div>
+  <% } %>
   <form method="post" action="/admin/login">
+    <%# lets password managers save and fill this login like any other %>
+    <input type="text" name="username" value="admin" autocomplete="username" hidden />
     <label>
       Password
-      <input type="password" name="password" autofocus required />
+      <input type="password" name="password" autocomplete="current-password" autofocus required />
     </label>
     <button type="submit">Log in</button>
   </form>

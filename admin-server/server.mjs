@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import express from 'express';
 import session from 'express-session';
-import rateLimit from 'express-rate-limit';
+import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import helmet from 'helmet';
 import bcrypt from 'bcryptjs';
 import { join, dirname } from 'node:path';
@@ -12,6 +12,7 @@ import { COLLECTIONS, getCollection, SITE_SECTIONS } from './lib/schema.mjs';
 import { listEntries, getEntry, createEntry, updateEntry, upsertEntry, deleteEntry, reorderEntries, SITE_REPO } from './lib/content.mjs';
 import { readFrontmatter } from './lib/frontmatter.mjs';
 import { listMedia, listFolders, placeLibraryUploads, deleteLibraryFile } from './lib/media.mjs';
+import { clientIp, loginLimiterPerIp, loginLimiterGlobal } from './lib/auth.mjs';
 import {
   upload,
   placeUpload,
@@ -73,7 +74,15 @@ admin.use(
 
 // Blunt instrument against scripted abuse of any /admin endpoint, on top
 // of the much stricter limiter on /login below.
-admin.use(rateLimit({ windowMs: 10 * 60 * 1000, max: 300, standardHeaders: true, legacyHeaders: false }));
+admin.use(
+  rateLimit({
+    windowMs: 10 * 60 * 1000,
+    limit: 300,
+    standardHeaders: true,
+    legacyHeaders: false,
+    keyGenerator: (req) => ipKeyGenerator(clientIp(req)),
+  }),
+);
 
 admin.use(express.static(join(__dirname, 'public')));
 admin.use(express.urlencoded({ extended: true }));
@@ -122,13 +131,6 @@ function requireAuth(req, res, next) {
   return res.redirect(303, '/admin/login');
 }
 
-const loginLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 10,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: 'Too many login attempts. Wait a while and try again.',
-});
 
 // ---------- auth ----------
 
@@ -137,14 +139,20 @@ admin.get('/login', (req, res) => {
   res.render('login', { flash: flash(req) });
 });
 
-admin.post('/login', loginLimiter, async (req, res) => {
-  const ok = req.body.password && (await bcrypt.compare(req.body.password, PASSWORD_HASH));
+admin.post('/login', loginLimiterGlobal, loginLimiterPerIp, async (req, res, next) => {
+  const ok = typeof req.body.password === 'string' && (await bcrypt.compare(req.body.password, PASSWORD_HASH));
   if (!ok) {
-    setFlash(req, 'error', 'Wrong password.');
-    return res.redirect(303, '/admin/login');
+    console.warn(`Failed admin login from ${clientIp(req)}`);
+    // a 401 (not a redirect) is what counts toward the login limits
+    return res.status(401).render('login', { error: 'Wrong password.' });
   }
-  req.session.authed = true;
-  res.redirect(303, '/admin');
+  // a brand-new session id on login, so one picked up before logging in
+  // can never become a logged-in one
+  req.session.regenerate((err) => {
+    if (err) return next(err);
+    req.session.authed = true;
+    req.session.save((saveErr) => (saveErr ? next(saveErr) : res.redirect(303, '/admin')));
+  });
 });
 
 admin.post('/logout', (req, res) => {

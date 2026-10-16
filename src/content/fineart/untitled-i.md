@@ -1,7 +1,7 @@
 ---
-title: "Untitled I"
-medium: "Ink and watercolor on paper"
-image: "/media/fineart/untitled-01.jpg"
+title: Untitled I
+medium: Ink and watercolor on paper
+image: /media/fineart/untitled-01.jpg
 featured: true
 order: 1
 ---

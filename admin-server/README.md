@@ -57,19 +57,21 @@ docker compose logs -f
 
 The container joins the `nginx_pm_default` network and listens on port
 3000 — point your reverse proxy at `alexportfolio:3000` and terminate HTTPS
-there. This dashboard isn't meant to sit directly on the open internet:
-put `/admin` behind the proxy's own auth or IP allowlist too — the
-password login and rate limiting are a second layer, not the only one.
+there. The dashboard login (below) is designed to stand on its own; put `/admin`
+behind the proxy's own auth or an IP allowlist too if you want a second
+layer.
 
 ## Security
 
 A rundown of what's actually protecting this, for your own peace of mind:
 
-- **Login**: a single bcrypt-hashed password, rate-limited to 10 attempts
-  per 15 minutes per IP. Pick a real, unique password when you generate
-  the hash above — it's the only thing standing between the internet and
-  write access to the whole site if this ever ends up reachable from
-  outside your network.
+- **Login**: a single bcrypt-hashed password — pick a long random one, it's
+  the only thing standing between the internet and write access to the
+  whole site. Wrong passwords are limited to 5 per 15 minutes per visitor
+  and 50 an hour in total, so guessing from many addresses at once is
+  capped too. Behind Cloudflare the real visitor address comes from
+  `CF-Connecting-IP`, trusted only on requests that actually arrive from
+  Cloudflare's ranges (`lib/auth.mjs`). Each login gets a fresh session id.
 - **Sessions**: the cookie is `HttpOnly` (invisible to any JavaScript,
   including an attacker's), `SameSite=Strict` (never sent on a request
   originating from another site — the standard, modern defense against

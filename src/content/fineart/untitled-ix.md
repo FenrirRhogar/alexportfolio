@@ -1,7 +1,7 @@
 ---
-title: "Untitled IX"
-medium: "Watercolor on paper"
-image: "/media/fineart/untitled-09.jpg"
+title: Untitled IX
+medium: Watercolor on paper
+image: /media/fineart/untitled-09.jpg
 featured: true
 order: 9
 ---

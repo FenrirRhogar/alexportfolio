@@ -1,7 +1,7 @@
 ---
-title: "Untitled VIII"
-medium: "Graphite on paper"
-image: "/media/fineart/untitled-08.jpg"
+title: Untitled VIII
+medium: Graphite on paper
+image: /media/fineart/untitled-08.jpg
 featured: false
 order: 8
 ---

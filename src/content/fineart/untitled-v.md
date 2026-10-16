@@ -1,7 +1,7 @@
 ---
-title: "Untitled V"
-medium: "Watercolor on paper"
-image: "/media/fineart/untitled-05.jpg"
+title: Untitled V
+medium: Watercolor on paper
+image: /media/fineart/untitled-05.jpg
 featured: false
 order: 5
 ---

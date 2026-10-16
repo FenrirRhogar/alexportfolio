@@ -1,7 +1,7 @@
 ---
-title: "Untitled VI"
-medium: "Pen and ink on paper"
-image: "/media/fineart/untitled-06.jpg"
+title: Untitled VI
+medium: Pen and ink on paper
+image: /media/fineart/untitled-06.jpg
 featured: false
 order: 6
 ---
