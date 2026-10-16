@@ -72,6 +72,11 @@ A rundown of what's actually protecting this, for your own peace of mind:
   capped too. Behind Cloudflare the real visitor address comes from
   `CF-Connecting-IP`, trusted only on requests that actually arrive from
   Cloudflare's ranges (`lib/auth.mjs`). Each login gets a fresh session id.
+- **Cloudflare Access** (optional, set `CF_ACCESS_TEAM_DOMAIN` and
+  `CF_ACCESS_AUD`): an email one-time code in front of `/admin`, managed in
+  Cloudflare Zero Trust. The app also verifies Access's signed token on
+  every `/admin` request, so going around Cloudflare to the server's IP
+  address directly gets a 403.
 - **Sessions**: the cookie is `HttpOnly` (invisible to any JavaScript,
   including an attacker's), `SameSite=Strict` (never sent on a request
   originating from another site — the standard, modern defense against

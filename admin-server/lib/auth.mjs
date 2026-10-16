@@ -1,5 +1,6 @@
 import { BlockList, isIP } from 'node:net';
 import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
+import { createRemoteJWKSet, jwtVerify } from 'jose';
 
 // Cloudflare's published edge ranges (https://www.cloudflare.com/ips/).
 // Requests arrive Cloudflare → Nginx Proxy Manager → here, so the address
@@ -64,3 +65,33 @@ export const loginLimiterGlobal = rateLimit({
   handler: (req, res) =>
     res.status(429).render('login', { error: 'Logging in is paused for a while after too many wrong passwords. Try again later.' }),
 });
+
+// ---------- Cloudflare Access ----------
+// When CF_ACCESS_TEAM_DOMAIN and CF_ACCESS_AUD are set, every /admin request
+// must carry the signed pass Cloudflare Access adds once someone has signed
+// in with their email code. Access itself only guards traffic that goes
+// through Cloudflare — this check is what stops anyone reaching the server's
+// IP address directly from skipping it.
+
+const TEAM = process.env.CF_ACCESS_TEAM_DOMAIN;
+const AUD = process.env.CF_ACCESS_AUD;
+// without the AUD tag, a pass issued for any other Access app on the same
+// team would be accepted too — so it's both or neither
+if (Boolean(TEAM) !== Boolean(AUD)) {
+  throw new Error('Set both CF_ACCESS_TEAM_DOMAIN and CF_ACCESS_AUD, or neither — see .env.example');
+}
+const accessKeys = TEAM ? createRemoteJWKSet(new URL(`https://${TEAM}/cdn-cgi/access/certs`)) : null;
+
+export async function requireCloudflareAccess(req, res, next) {
+  if (!accessKeys) return next();
+  const token = req.get('cf-access-jwt-assertion');
+  try {
+    if (!token) throw new Error('no Access token');
+    const { payload } = await jwtVerify(token, accessKeys, { issuer: `https://${TEAM}`, audience: AUD });
+    req.accessEmail = payload.email;
+    next();
+  } catch (err) {
+    console.warn(`Blocked /admin request without a valid Cloudflare Access pass from ${clientIp(req)} (${err.code || err.message})`);
+    res.status(403).type('text').send('Forbidden');
+  }
+}

@@ -12,7 +12,7 @@ import { COLLECTIONS, getCollection, SITE_SECTIONS } from './lib/schema.mjs';
 import { listEntries, getEntry, createEntry, updateEntry, upsertEntry, deleteEntry, reorderEntries, SITE_REPO } from './lib/content.mjs';
 import { readFrontmatter } from './lib/frontmatter.mjs';
 import { listMedia, listFolders, placeLibraryUploads, deleteLibraryFile } from './lib/media.mjs';
-import { clientIp, loginLimiterPerIp, loginLimiterGlobal } from './lib/auth.mjs';
+import { clientIp, loginLimiterPerIp, loginLimiterGlobal, requireCloudflareAccess } from './lib/auth.mjs';
 import {
   upload,
   placeUpload,
@@ -48,6 +48,9 @@ app.set('trust proxy', 1); // sitting behind a reverse proxy on the home server
 // ---------- everything admin-related lives under /admin ----------
 
 const admin = express.Router();
+
+// first of all: nothing under /admin answers without Cloudflare Access (if configured)
+admin.use(requireCloudflareAccess);
 
 // Security headers — scoped to /admin only (not the proxied public site,
 // which has its own headers from wherever it's actually served).
