@@ -2,16 +2,19 @@
 
 <div class="list-header">
   <h1>Site content</h1>
-  <a href="/" target="_blank" rel="noopener" class="button ghost small">View site ↗</a>
+  <div class="list-header-actions">
+    <a href="/admin/raw/site/global" class="button ghost small">Edit raw file</a>
+    <a href="/" target="_blank" rel="noopener" class="button ghost small">View site ↗</a>
+  </div>
 </div>
-<p class="hint">Everything here is the text, links, and images shown around the site — the homepage, About, Contact, and footer — outside of your Design/Motion/Fine Art projects themselves.</p>
+<p class="hint">Everything around your projects: colors, animations, the menu, every page's text, links, and images. Click a section to open it — one Save button covers them all.</p>
 
 <form method="post" enctype="multipart/form-data" class="entry-form">
-  <% sections.forEach((section) => { %>
-    <div class="media-card">
-      <h3><%= section.heading %></h3>
+  <% sections.forEach((section, i) => { %>
+    <details class="media-card site-section" <%= i === 0 ? 'open' : '' %>>
+      <summary><h3><%= section.heading %></h3></summary>
       <% section.fields.forEach((f) => { %>
-        <% const value = site[f.name]; %>
+        <% const value = site[f.name] ?? f.default; %>
         <%- include('partials/field', { f, value }) %>
       <% }) %>
 
@@ -28,12 +31,14 @@
           <input type="file" name="aboutPhoto" accept="image/jpeg,image/png,image/webp,image/gif,image/avif" />
         </label>
       <% } %>
-    </div>
+    </details>
   <% }) %>
 
-  <div class="form-actions">
+  <div class="form-actions sticky-actions">
     <button type="submit">Save</button>
   </div>
 </form>
+
+<script src="/admin/site.js"></script>
 
 <%- include('partials/footer') %>

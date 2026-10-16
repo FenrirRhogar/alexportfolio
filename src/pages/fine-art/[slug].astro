@@ -1,6 +1,6 @@
 ---
 import Layout from '../../layouts/Layout.astro';
-import { getCollection, render } from 'astro:content';
+import { getCollection, getEntry, render } from 'astro:content';
 import { withBase } from '../../lib/url';
 
 export async function getStaticPaths() {
@@ -9,6 +9,7 @@ export async function getStaticPaths() {
 }
 
 const { entry } = Astro.props;
+const site = (await getEntry('site', 'global')).data;
 const { Content } = await render(entry);
 const { title, medium, dimensions, year, status, image, gallery } = entry.data;
 
@@ -38,7 +39,7 @@ const meta = [medium, dimensions, year].filter(Boolean).join(' — ') + (status 
 
     <div class="mt-16 text-center">
       <a href={withBase('/fine-art/')} data-cursor-hover class="link-hover text-sm uppercase tracking-widest text-ink-soft">
-        ← Back to Fine Art
+        ← Back to {site.navFineArt}
       </a>
     </div>
   </article>

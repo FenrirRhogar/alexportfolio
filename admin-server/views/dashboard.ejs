@@ -2,17 +2,37 @@
 
 <h1>What would you like to edit?</h1>
 
+<% if (build.state === 'failed') { %>
+  <div class="flash error">
+    The last publish failed, so the site is still showing the previous version. Fix the problem below, then press "Publish failed — retry" at the top.
+    <pre class="build-error"><%= build.error %></pre>
+  </div>
+<% } %>
+
 <div class="card-grid">
   <% collections.forEach((c) => { %>
-    <a class="card" href="/admin/<%= c.key %>">
+    <a class="card card-<%= c.key %>" href="/admin/<%= c.key %>">
       <h2><%= c.label %></h2>
-      <p><%= c.count %> <%= c.count === 1 ? c.singular.toLowerCase() : c.singular.toLowerCase() + 's' %></p>
+      <p><%= c.count %> <%= c.count === 1 ? c.singular.toLowerCase() : c.singular.toLowerCase() + 's' %> · <%= c.featured %> on the homepage</p>
     </a>
   <% }) %>
   <a class="card" href="/admin/site">
     <h2>⚙️ Site content</h2>
-    <p>Homepage, About, Contact, footer — all the text and links around your projects</p>
+    <p>Colors, animations, menu, and every page's text — homepage, section pages, About, Contact, footer</p>
+  </a>
+  <a class="card" href="/admin/media">
+    <h2>🗂️ Media library</h2>
+    <p><%= media.count %> files · <%= (media.size / 1024 / 1024).toFixed(0) %> MB<% if (media.unused) { %> · <%= media.unused %> unused<% } %></p>
+  </a>
+  <a class="card" href="/admin/backup">
+    <h2>💾 Download a backup</h2>
+    <p>Every project, text, image, and video in one file — keep a copy somewhere safe</p>
   </a>
 </div>
+
+<p class="muted publish-status">
+  <% if (build.state === 'ok') { %>Site last published <%= build.finishedAt.toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' }) %>.<% } %>
+  <% if (build.state === 'building') { %>Publishing your latest changes…<% } %>
+</p>
 
 <%- include('partials/footer') %>

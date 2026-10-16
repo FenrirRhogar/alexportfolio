@@ -1,0 +1,86 @@
+<%- include('partials/header', { title: 'Media library', flash }) %>
+
+<div class="list-header">
+  <h1>Media library</h1>
+</div>
+<p class="hint">Every image, video, and PDF on the site. "Used by" shows where each one appears — a file can only be deleted once nothing uses it.</p>
+
+<form method="post" action="/admin/media/upload" enctype="multipart/form-data" class="media-card upload-card">
+  <h3>Upload files</h3>
+  <div class="upload-row">
+    <label class="field">
+      <span>Into folder</span>
+      <select name="folder">
+        <% folders.forEach((f) => { %>
+          <option value="<%= f %>" <%= f === (folder || '/media') ? 'selected' : '' %>><%= f %></option>
+        <% }) %>
+      </select>
+    </label>
+    <label class="field">
+      <span>New sub-folder (optional)</span>
+      <input type="text" name="newFolder" placeholder="e.g. new-project" />
+    </label>
+  </div>
+  <label class="field">
+    <span>Files</span>
+    <input type="file" name="libraryFiles" multiple required
+      accept="image/jpeg,image/png,image/webp,image/gif,image/avif,video/mp4,video/webm,application/pdf" />
+  </label>
+  <div class="form-actions"><button type="submit">Upload</button></div>
+</form>
+
+<form method="get" action="/admin/media" class="media-filters">
+  <input type="search" name="q" value="<%= q %>" placeholder="Search file names…" />
+  <select name="folder">
+    <option value="">All folders</option>
+    <% folders.forEach((f) => { %>
+      <option value="<%= f %>" <%= f === folder ? 'selected' : '' %>><%= f %></option>
+    <% }) %>
+  </select>
+  <label><input type="checkbox" name="unused" value="1" <%= unused ? 'checked' : '' %> /> Unused only</label>
+  <button type="submit" class="button small">Filter</button>
+  <% if (q || folder || unused) { %><a href="/admin/media">Clear</a><% } %>
+</form>
+
+<p class="muted"><%= files.length %> file<%= files.length === 1 ? '' : 's' %></p>
+
+<div class="media-grid">
+  <% files.forEach((m) => { %>
+    <div class="media-item">
+      <a class="media-preview" href="<%= m.path %>" target="_blank" rel="noopener">
+        <% if (m.kind === 'image') { %>
+          <img src="<%= m.path %>" alt="" loading="lazy" />
+        <% } else if (m.kind === 'video') { %>
+          <video src="<%= m.path %>" muted preload="metadata"></video>
+          <span class="media-badge">▶ video</span>
+        <% } else { %>
+          <span class="media-icon"><%= m.kind === 'pdf' ? '📄 PDF' : '📦 file' %></span>
+        <% } %>
+      </a>
+      <div class="media-meta">
+        <strong title="<%= m.path %>"><%= m.name %></strong>
+        <span class="muted"><%= m.folder %> · <%= m.size > 1048576 ? (m.size / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(m.size / 1024)) + ' KB' %></span>
+        <% if (m.usedBy.length) { %>
+          <span class="used-by">Used by:
+            <% m.usedBy.forEach((u, i) => { %><a href="<%= u.editUrl %>"><%= u.label %></a><%= i < m.usedBy.length - 1 ? ', ' : '' %><% }) %>
+          </span>
+        <% } else { %>
+          <span class="unused-tag">Not used anywhere</span>
+        <% } %>
+      </div>
+      <div class="media-actions">
+        <button type="button" class="link-button" data-copy="<%= m.path %>">Copy path</button>
+        <% if (!m.usedBy.length) { %>
+          <form method="post" action="/admin/media/delete" data-confirm="Delete <%= m.name %>? This cannot be undone.">
+            <input type="hidden" name="path" value="<%= m.path %>" />
+            <button type="submit" class="link-button danger">Delete</button>
+          </form>
+        <% } %>
+      </div>
+    </div>
+  <% }) %>
+</div>
+
+<script src="/admin/media.js"></script>
+
+<%- include('partials/footer') %>

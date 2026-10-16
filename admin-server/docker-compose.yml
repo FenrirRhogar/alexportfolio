@@ -11,6 +11,7 @@ services:
       # *inside* the container, regardless of its real path on the host
       SITE_REPO_PATH: /site
       HOME: /tmp
+      TZ: Europe/Athens
     volumes:
       - ${SITE_REPO_HOST_PATH}:/site
     networks: [nginx_pm_default]

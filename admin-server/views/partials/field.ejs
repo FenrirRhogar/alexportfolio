@@ -11,6 +11,14 @@
         <option value="<%= opt %>" <%= value === opt ? 'selected' : '' %>><%= opt || '—' %></option>
       <% }) %>
     </select>
+  <% } else if (f.type === 'color') { %>
+    <span class="color-field">
+      <input type="color" name="<%= f.name %>" value="<%= value || f.default %>" />
+      <code><%= value || f.default %></code>
+    </span>
+  <% } else if (f.type === 'number') { %>
+    <input type="number" name="<%= f.name %>" value="<%= value ?? '' %>"
+      <% if (f.min != null) { %>min="<%= f.min %>"<% } %> <% if (f.max != null) { %>max="<%= f.max %>"<% } %> />
   <% } else if (f.type === 'tags') { %>
     <input type="text" name="<%= f.name %>" placeholder="<%= f.placeholder || '' %>"
       value="<%= Array.isArray(value) ? value.join(', ') : (value || '') %>" />
@@ -18,5 +26,6 @@
     <input type="text" name="<%= f.name %>" placeholder="<%= f.placeholder || '' %>"
       value="<%= value || '' %>" <%= f.required ? 'required' : '' %> />
   <% } %>
-  <% if (f.hint) { %><span class="muted"><%= f.hint %></span><% } %>
+  <% if (f.type === 'color') { %><span class="muted"><%= f.hint ? f.hint + ' ' : '' %>Default: <%= f.default %></span>
+  <% } else if (f.hint) { %><span class="muted"><%= f.hint %></span><% } %>
 </label>

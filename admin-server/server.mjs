@@ -6,8 +6,12 @@ import helmet from 'helmet';
 import bcrypt from 'bcryptjs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { spawn } from 'node:child_process';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { COLLECTIONS, getCollection, SITE_SECTIONS } from './lib/schema.mjs';
-import { listEntries, getEntry, createEntry, updateEntry, upsertEntry, deleteEntry, reorderEntries } from './lib/content.mjs';
+import { listEntries, getEntry, createEntry, updateEntry, upsertEntry, deleteEntry, reorderEntries, SITE_REPO } from './lib/content.mjs';
+import { readFrontmatter } from './lib/frontmatter.mjs';
+import { listMedia, listFolders, placeLibraryUploads, deleteLibraryFile } from './lib/media.mjs';
 import {
   upload,
   placeUpload,
@@ -150,13 +154,137 @@ admin.post('/logout', (req, res) => {
 // ---------- dashboard ----------
 
 admin.get('/', requireAuth, (req, res) => {
-  const collections = Object.values(COLLECTIONS).map((c) => ({
-    key: c.key,
-    label: c.label,
-    singular: c.singular,
-    count: listEntries(c.key).length,
-  }));
-  res.render('dashboard', { collections, flash: flash(req) });
+  const collections = Object.values(COLLECTIONS).map((c) => {
+    const entries = listEntries(c.key);
+    return {
+      key: c.key,
+      label: c.label,
+      singular: c.singular,
+      count: entries.length,
+      featured: entries.filter((e) => e.data.featured).length,
+    };
+  });
+  const media = listMedia();
+  res.render('dashboard', {
+    collections,
+    media: {
+      count: media.length,
+      size: media.reduce((sum, m) => sum + m.size, 0),
+      unused: media.filter((m) => !m.usedBy.length).length,
+    },
+    flash: flash(req),
+  });
+});
+
+// ---------- media library: every file under public/media ----------
+
+const libraryUpload = upload.array('libraryFiles', 50);
+
+admin.get('/media', requireAuth, (req, res) => {
+  const folder = typeof req.query.folder === 'string' ? req.query.folder : '';
+  const unused = req.query.unused === '1';
+  const q = typeof req.query.q === 'string' ? req.query.q.trim().toLowerCase() : '';
+  const files = listMedia().filter(
+    (m) =>
+      (!folder || m.folder === folder) &&
+      (!unused || !m.usedBy.length) &&
+      (!q || m.path.toLowerCase().includes(q)),
+  );
+  res.render('media', { files, folders: listFolders(), folder, unused, q, flash: flash(req) });
+});
+
+admin.post('/media/upload', requireAuth, libraryUpload, (req, res) => {
+  try {
+    if (!req.files?.length) throw new Error('Choose at least one file to upload.');
+    const placed = placeLibraryUploads(req.files, req.body.folder, req.body.newFolder);
+    publish();
+    setFlash(req, 'success', `Uploaded ${placed.length} file${placed.length === 1 ? '' : 's'}. Copy a file's path to use it anywhere.`);
+  } catch (err) {
+    console.error(err);
+    setFlash(req, 'error', `Could not upload: ${err.message}`);
+  }
+  res.redirect(303, '/admin/media');
+});
+
+admin.post('/media/delete', requireAuth, (req, res) => {
+  try {
+    deleteLibraryFile(req.body.path);
+    publish();
+    setFlash(req, 'success', `Deleted ${req.body.path}.`);
+  } catch (err) {
+    setFlash(req, 'error', `Could not delete: ${err.message}`);
+  }
+  res.redirect(303, req.get('referer')?.includes('/admin/media') ? req.get('referer') : '/admin/media');
+});
+
+// ---------- raw file editor: the full file behind any entry ----------
+// an escape hatch for anything the forms don't cover — the frontmatter is
+// checked before saving, and a build that still fails leaves the last good
+// site live (the header's Republish button shows the error)
+
+const RAW_COLLECTIONS = [...Object.keys(COLLECTIONS), 'site'];
+
+function rawFilePath(collection, slug) {
+  if (!RAW_COLLECTIONS.includes(collection) || !/^[a-z0-9][a-z0-9-]*$/.test(slug)) return null;
+  const file = join(SITE_REPO, 'src', 'content', collection, `${slug}.md`);
+  return existsSync(file) ? file : null;
+}
+
+function rawBackUrl(collection, slug) {
+  return collection === 'site' ? '/admin/site' : `/admin/${collection}/${slug}/edit`;
+}
+
+admin.get('/raw/:collection/:slug', requireAuth, (req, res, next) => {
+  const { collection, slug } = req.params;
+  const file = rawFilePath(collection, slug);
+  if (!file) return next();
+  res.render('raw', {
+    collection,
+    slug,
+    raw: readFileSync(file, 'utf8'),
+    backUrl: rawBackUrl(collection, slug),
+    flash: flash(req),
+  });
+});
+
+admin.post('/raw/:collection/:slug', requireAuth, (req, res, next) => {
+  const { collection, slug } = req.params;
+  const file = rawFilePath(collection, slug);
+  if (!file) return next();
+  const raw = String(req.body.raw || '').replace(/\r\n/g, '\n');
+  try {
+    if (!/^---\n[\s\S]*?\n---/.test(raw)) throw new Error('The file must start with a --- block of settings, closed by another ---.');
+    readFrontmatter(raw); // throws on broken YAML
+    writeFileSync(file, raw.endsWith('\n') ? raw : `${raw}\n`);
+    publish();
+    setFlash(req, 'success', `Saved. ${PUBLISHED}`);
+    return res.redirect(303, `/admin/raw/${collection}/${slug}`);
+  } catch (err) {
+    // re-show what they typed rather than throwing their edits away
+    res.status(400).render('raw', {
+      collection,
+      slug,
+      raw,
+      backUrl: rawBackUrl(collection, slug),
+      flash: { type: 'error', message: `Not saved — ${err.message.split('\n')[0]}` },
+    });
+  }
+});
+
+// ---------- backup: every content file and media file in one download ----------
+
+admin.get('/backup', requireAuth, (req, res) => {
+  const stamp = new Date().toISOString().slice(0, 10);
+  res.setHeader('Content-Type', 'application/gzip');
+  res.setHeader('Content-Disposition', `attachment; filename="portfolio-backup-${stamp}.tar.gz"`);
+  const tar = spawn('tar', ['-czf', '-', '-C', SITE_REPO, 'src/content', 'public/media']);
+  tar.stdout.pipe(res);
+  tar.stderr.on('data', (d) => console.error('backup:', String(d)));
+  tar.on('error', (err) => {
+    console.error('backup failed:', err);
+    res.destroy();
+  });
+  req.on('close', () => tar.kill());
 });
 
 admin.post('/rebuild', requireAuth, (req, res) => {
@@ -173,13 +301,23 @@ const siteUpload = upload.fields([{ name: 'aboutPhoto', maxCount: 1 }]);
 function coerceSiteFields(body) {
   const data = {};
   for (const f of SITE_FIELDS_FLAT) {
-    if (f.type === 'tags') {
+    if (f.type === 'checkbox') {
+      data[f.name] = body[f.name] === 'on' || body[f.name] === 'true';
+    } else if (f.type === 'number') {
+      const n = Number.parseInt(body[f.name], 10);
+      data[f.name] = Number.isFinite(n) ? Math.min(Math.max(n, f.min ?? n), f.max ?? n) : f.default;
+    } else if (f.type === 'color') {
+      // only a strict #rrggbb ever reaches the page's CSS
+      data[f.name] = /^#[0-9a-f]{6}$/i.test(body[f.name] || '') ? body[f.name].toLowerCase() : f.default;
+    } else if (f.type === 'tags') {
       data[f.name] = (body[f.name] || '')
         .split(',')
         .map((t) => t.trim())
         .filter(Boolean);
     } else {
-      data[f.name] = (body[f.name] || '').trim();
+      // a cleared field that has a default (menu labels, page headings…)
+      // goes back to that default rather than leaving a blank on the site
+      data[f.name] = (body[f.name] || '').trim() || f.default || '';
     }
   }
   return data;
@@ -306,6 +444,16 @@ for (const key of Object.keys(COLLECTIONS)) {
     reorderEntries(key, req.body.slugs || []);
     publish();
     res.json({ ok: true });
+  });
+
+  admin.post(`/${key}/:slug/feature`, requireAuth, (req, res) => {
+    const entry = getEntry(key, req.params.slug);
+    if (entry) {
+      updateEntry(key, req.params.slug, { featured: !entry.data.featured }, {});
+      publish();
+      setFlash(req, 'success', `"${entry.data.title}" is ${entry.data.featured ? 'no longer' : 'now'} on the homepage. ${PUBLISHED}`);
+    }
+    res.redirect(303, `/admin/${key}`);
   });
 
   admin.get(`/${key}/new`, requireAuth, (req, res) => {

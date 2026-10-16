@@ -1,0 +1,20 @@
+<%- include('partials/header', { title: 'Edit file', flash }) %>
+
+<div class="list-header">
+  <h1>Edit file <code><%= collection %>/<%= slug %>.md</code></h1>
+  <a href="<%= backUrl %>">← Back to the form</a>
+</div>
+<p class="hint">
+  The complete file, for anything the normal form doesn't cover. The settings between the two <code>---</code> lines
+  are YAML; the text after them is the description shown on the page. If something is wrong, the site keeps showing
+  the previous version and the dashboard shows what went wrong.
+</p>
+
+<form method="post" class="entry-form">
+  <textarea name="raw" class="raw-editor" rows="28" spellcheck="false"><%= raw %></textarea>
+  <div class="form-actions">
+    <button type="submit">Save file</button>
+  </div>
+</form>
+
+<%- include('partials/footer') %>

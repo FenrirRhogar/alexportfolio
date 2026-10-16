@@ -15,6 +15,12 @@
   --color-clay: #c98b7a;
   --color-rust: #8a3b2b;
 
+  /* editable from the admin dashboard — Layout.astro overrides these on <html> */
+  --color-accent: #c1633d;
+  --color-design: #c1633d;
+  --color-motion: #5c7285;
+  --color-fineart: #d3a13b;
+
   --font-display: "Instrument Serif", "Playfair Display", Georgia, serif;
   --font-serif-alt: "Playfair Display", Georgia, serif;
   --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
@@ -56,7 +62,7 @@ body.theme-dark {
 }
 
 ::selection {
-  background: var(--color-terracotta);
+  background: var(--color-accent);
   color: var(--color-paper);
 }
 
@@ -104,16 +110,17 @@ body.cursor-hidden #cursor-ring {
   opacity: 0;
 }
 
-/* editorial underline-on-hover link treatment */
+/* editorial underline-on-hover link treatment (--link-color tints the line) */
 .link-hover {
-  background-image: linear-gradient(currentColor, currentColor);
+  background-image: linear-gradient(var(--link-color, currentColor), var(--link-color, currentColor));
   background-position: 0 100%;
   background-repeat: no-repeat;
   background-size: 0% 1px;
   transition: background-size 0.4s cubic-bezier(0.65, 0, 0.35, 1);
 }
-.link-hover:hover {
-  background-size: 100% 1px;
+.link-hover:hover,
+.link-hover.is-active {
+  background-size: 100% 2px;
 }
 
 @keyframes fade-up {
@@ -129,6 +136,97 @@ body.cursor-hidden #cursor-ring {
 
 .fade-up {
   animation: fade-up 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* ---- scroll reveal (Layout.astro adds .is-visible as things scroll in) ---- */
+.js .reveal {
+  opacity: 0;
+  transform: translateY(28px);
+  transition: opacity 0.9s cubic-bezier(0.16, 1, 0.3, 1), transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+.js .reveal.is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+/* ---- homepage hero: soft drifting color glow behind the headline ---- */
+.hero-glow {
+  position: absolute;
+  inset: -10% -5% 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: -1;
+  /* fade out toward the bottom so the glow never ends in a hard edge */
+  mask-image: linear-gradient(to bottom, #000 55%, transparent);
+}
+.hero-glow span {
+  position: absolute;
+  width: 42vw;
+  height: 42vw;
+  min-width: 320px;
+  min-height: 320px;
+  border-radius: 9999px;
+  filter: blur(80px);
+  opacity: 0.24;
+  animation: drift 22s ease-in-out infinite alternate;
+}
+.hero-glow span:nth-child(1) { background: var(--color-design); top: -8%; right: 4%; }
+.hero-glow span:nth-child(2) { background: var(--color-motion); top: 30%; right: 30%; animation-duration: 28s; animation-delay: -6s; }
+.hero-glow span:nth-child(3) { background: var(--color-fineart); top: 5%; left: -10%; animation-duration: 25s; animation-delay: -12s; }
+
+@keyframes drift {
+  0% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(6vw, 4vw) scale(1.12); }
+  100% { transform: translate(-4vw, 7vw) scale(0.94); }
+}
+
+/* hero eyebrow: a slow gradient sweep across the three discipline colors */
+.accent-gradient-text {
+  background: linear-gradient(90deg, var(--color-design), var(--color-motion), var(--color-fineart), var(--color-design));
+  background-size: 300% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: shimmer 12s linear infinite;
+}
+@keyframes shimmer {
+  to { background-position: 300% 0; }
+}
+
+/* ---- marquee strip between the hero and the work grid ---- */
+.marquee {
+  overflow: hidden;
+  border-block: 1px solid color-mix(in srgb, var(--color-ink) 12%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+}
+.marquee-track {
+  display: flex;
+  width: max-content;
+  animation: marquee 40s linear infinite;
+}
+.marquee:hover .marquee-track {
+  animation-play-state: paused;
+}
+@keyframes marquee {
+  to { transform: translateX(-50%); }
+}
+
+/* ---- project tiles: a colored bar sweeps in under the image on hover ---- */
+.tile-bar {
+  height: 3px;
+  background: var(--tile-accent, var(--color-accent));
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.6s cubic-bezier(0.65, 0, 0.35, 1);
+}
+.group:hover .tile-bar {
+  transform: scaleX(1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .js .reveal { opacity: 1; transform: none; transition: none; }
+  .hero-glow span, .accent-gradient-text, .marquee-track, .fade-up { animation: none; }
 }
 
 /* required by the page-flip library (StPageFlip) — its dist build ships no

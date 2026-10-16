@@ -5,12 +5,12 @@ import { getEntry } from 'astro:content';
 const site = (await getEntry('site', 'global')).data;
 
 const links = [
-  { href: '/', label: 'Work' },
-  { href: '/design/', label: 'Design & Branding' },
-  { href: '/motion/', label: 'Motion & Video' },
-  { href: '/fine-art/', label: 'Fine Art' },
-  { href: '/about/', label: 'About' },
-  { href: '/contact/', label: 'Contact' },
+  { href: '/', label: site.navWork, color: 'var(--color-accent)' },
+  { href: '/design/', label: site.navDesign, color: 'var(--color-design)' },
+  { href: '/motion/', label: site.navMotion, color: 'var(--color-motion)' },
+  { href: '/fine-art/', label: site.navFineArt, color: 'var(--color-fineart)' },
+  { href: '/about/', label: site.navAbout, color: 'var(--color-accent)' },
+  { href: '/contact/', label: site.navContact, color: 'var(--color-accent)' },
 ];
 const path = Astro.url.pathname;
 ---
@@ -37,10 +37,11 @@ const path = Astro.url.pathname;
           <a
             href={withBase(l.href)}
             data-cursor-hover
+            style={`--link-color: ${l.color}`}
             class:list={[
               'link-hover pb-1',
               path === withBase(l.href) || (l.href !== '/' && path.startsWith(withBase(l.href)))
-                ? 'opacity-100'
+                ? 'is-active opacity-100'
                 : 'opacity-70 hover:opacity-100',
             ]}
           >

@@ -107,12 +107,19 @@ internal tool.
 
 Give Alexandra the URL and the password. From the dashboard she can:
 
-- See all Design, Motion, and Fine Art entries with thumbnails.
-- Add a new entry, filling in a plain form and uploading images/video.
-- Edit any entry — change text, swap or add images, add/remove gallery
-  photos.
-- Drag to reorder entries within a category (drag handle on the left of
-  each row) — this is what controls display order on the live site.
-- Delete an entry, which also cleans up its media files.
+- **Projects** (Design, Motion, Fine Art): add, edit, delete, drag to
+  reorder, and star/unstar which ones appear on the homepage straight from
+  the list. Each project has "View on site" and "Edit raw file" for
+  anything the form doesn't cover.
+- **Site content**: every piece of text around the projects — the menu,
+  the homepage, each section page's headline, About, Contact, footer — plus
+  the site's colors and switches for autoplaying videos, the homepage color
+  glow, and the scrolling text strip.
+- **Media library**: every image, video, and PDF, with where each is used;
+  upload into any folder, copy a file's path, and delete files nothing uses
+  any more.
+- **Backup**: one download with every content and media file.
 
-Every one of those actions goes live within a few seconds.
+Every change goes live within a few seconds. If a change ever breaks the
+build, the site keeps showing the previous version and the dashboard shows
+the error.

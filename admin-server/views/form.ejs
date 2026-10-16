@@ -7,6 +7,10 @@
       <a href="#flipbooks" class="button ghost small">📖 Flipbooks</a>
       <a href="#trifolds" class="button ghost small">🪧 Trifolds</a>
     <% } %>
+    <% if (entry) { %>
+      <a href="<%= schema.publicPath %><%= entry.slug %>/" target="_blank" rel="noopener" class="button ghost small">View on site ↗</a>
+      <a href="/admin/raw/<%= schema.key %>/<%= entry.slug %>" class="button ghost small">Edit raw file</a>
+    <% } %>
     <a href="/admin/<%= schema.key %>">← Back to list</a>
   </div>
 </div>

@@ -13,7 +13,7 @@ import { SITE_REPO } from './content.mjs';
 // type instead means what lands on disk always matches how it'll be
 // served. SVG is deliberately excluded even though it's "an image" — it
 // can contain a <script> that runs if the file is opened directly.
-const MIME_EXTENSIONS = {
+export const MIME_EXTENSIONS = {
   'image/jpeg': '.jpg',
   'image/png': '.png',
   'image/webp': '.webp',
@@ -22,7 +22,7 @@ const MIME_EXTENSIONS = {
   'video/mp4': '.mp4',
   'video/webm': '.webm',
 };
-const PDF_MIME = 'application/pdf';
+export const PDF_MIME = 'application/pdf';
 
 // Uploads land in a scratch dir first (multer needs a destination before
 // we know the slug for a brand-new entry); the route handler then moves
@@ -52,6 +52,8 @@ export const upload = multer({
     if (isPdfField) {
       return file.mimetype === PDF_MIME ? cb(null, true) : cb(new Error('That file must be a PDF.'));
     }
+    // the media library takes anything the site can show, PDFs included
+    if (file.fieldname === 'libraryFiles' && file.mimetype === PDF_MIME) return cb(null, true);
     if (MIME_EXTENSIONS[file.mimetype]) return cb(null, true);
     cb(new Error('Unsupported file type — use JPG, PNG, WEBP, GIF, AVIF, MP4, or WEBM.'));
   },

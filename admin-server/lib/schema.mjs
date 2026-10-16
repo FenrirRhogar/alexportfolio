@@ -6,6 +6,7 @@ export const COLLECTIONS = {
     key: 'design',
     label: 'Design & Branding',
     singular: 'Project',
+    publicPath: '/design/',
     mediaDir: 'public/media/design',
     fields: [
       { name: 'title', label: 'Title', type: 'text', required: true },
@@ -28,6 +29,7 @@ export const COLLECTIONS = {
     key: 'motion',
     label: 'Motion & Video',
     singular: 'Video',
+    publicPath: '/motion/',
     mediaDir: 'public/media/motion',
     fields: [
       { name: 'title', label: 'Title', type: 'text', required: true },
@@ -45,6 +47,7 @@ export const COLLECTIONS = {
     key: 'fineart',
     label: 'Fine Art',
     singular: 'Artwork',
+    publicPath: '/fine-art/',
     mediaDir: 'public/media/fineart',
     fields: [
       { name: 'title', label: 'Title', type: 'text', default: 'Untitled' },
@@ -77,6 +80,39 @@ export const SITE_SECTIONS = [
       { name: 'email', label: 'Contact email', type: 'text', required: true, placeholder: 'you@example.com' },
       { name: 'instagram', label: 'Instagram link', type: 'text', placeholder: 'https://instagram.com/yourname' },
       { name: 'linkedin', label: 'LinkedIn link', type: 'text', placeholder: 'https://linkedin.com/in/yourname' },
+      {
+        name: 'siteDescription',
+        label: 'Site description',
+        type: 'textarea',
+        rows: 2,
+        default: 'Design, motion, and fine art — a working studio.',
+        hint: 'Shown by Google and in link previews when a page has no description of its own.',
+      },
+    ],
+  },
+  {
+    heading: 'Look & feel',
+    fields: [
+      { name: 'colorAccent', label: 'Highlight color', type: 'color', default: '#c1633d', hint: 'Links, text selection, and other small highlights.' },
+      { name: 'colorDesign', label: 'Design color', type: 'color', default: '#c1633d' },
+      { name: 'colorMotion', label: 'Motion color', type: 'color', default: '#5c7285' },
+      { name: 'colorFineArt', label: 'Fine Art color', type: 'color', default: '#d3a13b' },
+      { name: 'colorPaper', label: 'Background color', type: 'color', default: '#f7f5f0' },
+      { name: 'colorInk', label: 'Text color', type: 'color', default: '#201c18' },
+      { name: 'autoplayVideos', label: 'Play videos automatically (muted, on a loop)', type: 'checkbox', default: true },
+      { name: 'animateHero', label: 'Moving color glow behind the homepage headline', type: 'checkbox', default: true },
+      { name: 'showMarquee', label: 'Scrolling text strip on the homepage', type: 'checkbox', default: true },
+    ],
+  },
+  {
+    heading: 'Menu',
+    fields: [
+      { name: 'navWork', label: 'Homepage link', type: 'text', default: 'Work' },
+      { name: 'navDesign', label: 'Design link', type: 'text', default: 'Design & Branding' },
+      { name: 'navMotion', label: 'Motion link', type: 'text', default: 'Motion & Video' },
+      { name: 'navFineArt', label: 'Fine Art link', type: 'text', default: 'Fine Art' },
+      { name: 'navAbout', label: 'About link', type: 'text', default: 'About' },
+      { name: 'navContact', label: 'Contact link', type: 'text', default: 'Contact' },
     ],
   },
   {
@@ -85,6 +121,53 @@ export const SITE_SECTIONS = [
       { name: 'heroEyebrow', label: 'Small label above the headline', type: 'text', required: true },
       { name: 'heroHeading', label: 'Headline', type: 'textarea', rows: 2, required: true },
       { name: 'heroSubheading', label: 'Subheading', type: 'textarea', rows: 2, required: true },
+    ],
+  },
+  {
+    heading: 'Homepage — work',
+    fields: [
+      {
+        name: 'marqueeText',
+        label: 'Scrolling strip',
+        type: 'text',
+        default: 'Brand Identity · Editorial · Motion · Video Editing · Painting · Illustration',
+        hint: 'Separate the words with · (a middle dot).',
+      },
+      { name: 'homeWorkHeading', label: 'Heading above the projects', type: 'text', default: 'Selected Work' },
+      { name: 'homeWorkLink', label: '"See all" link text', type: 'text', default: 'View everything' },
+      {
+        name: 'homeFeaturedCount',
+        label: 'How many featured projects to show',
+        type: 'number',
+        default: 6,
+        min: 1,
+        max: 30,
+        hint: 'Tick "Feature on homepage" on a project to include it.',
+      },
+    ],
+  },
+  {
+    heading: 'Design page',
+    fields: [
+      { name: 'designEyebrow', label: 'Small label', type: 'text', default: 'Design & Branding' },
+      { name: 'designHeading', label: 'Headline', type: 'textarea', rows: 2, default: 'Identity systems built to survive contact with reality.' },
+      { name: 'designDescription', label: 'Description for Google / link previews', type: 'text', default: 'Brand identity, packaging, and editorial design case studies.' },
+    ],
+  },
+  {
+    heading: 'Motion page',
+    fields: [
+      { name: 'motionEyebrow', label: 'Small label', type: 'text', default: 'Motion & Video' },
+      { name: 'motionHeading', label: 'Headline', type: 'textarea', rows: 2, default: 'Cut for rhythm, not just coverage.' },
+      { name: 'motionDescription', label: 'Description for Google / link previews', type: 'text', default: 'Short-form edits, teasers, and social cuts.' },
+    ],
+  },
+  {
+    heading: 'Fine Art page',
+    fields: [
+      { name: 'fineartEyebrow', label: 'Small label', type: 'text', default: 'Fine Art' },
+      { name: 'fineartHeading', label: 'Headline', type: 'textarea', rows: 2, default: 'Paintings, mostly made before sunrise.' },
+      { name: 'fineartDescription', label: 'Description for Google / link previews', type: 'text', default: 'Paintings and studies.' },
     ],
   },
   {

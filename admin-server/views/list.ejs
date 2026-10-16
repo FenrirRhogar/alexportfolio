@@ -21,10 +21,14 @@
         <strong><%= e.data.title %></strong>
         <span class="muted">
           <%= [e.data.category || e.data.role || e.data.medium, e.data.year].filter(Boolean).join(' — ') %>
-          <% if (e.data.featured) { %> · featured<% } %>
+          <% if (e.data.featured) { %> · <span class="featured-tag">★ on homepage</span><% } %>
         </span>
       </div>
       <div class="entry-actions">
+        <form method="post" action="/admin/<%= schema.key %>/<%= e.slug %>/feature">
+          <button type="submit" class="link-button" title="Show or hide on the homepage"><%= e.data.featured ? '★ Unfeature' : '☆ Feature' %></button>
+        </form>
+        <a href="<%= schema.publicPath %><%= e.slug %>/" target="_blank" rel="noopener">View ↗</a>
         <a href="/admin/<%= schema.key %>/<%= e.slug %>/edit">Edit</a>
         <form method="post" action="/admin/<%= schema.key %>/<%= e.slug %>/delete" data-confirm="Delete &quot;<%= e.data.title %>&quot;? This cannot be undone.">
           <button type="submit" class="link-button danger">Delete</button>

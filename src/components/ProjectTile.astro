@@ -4,32 +4,73 @@ import { withBase } from '../lib/url';
 interface Props {
   href: string;
   image: string;
+  /** when set, the tile shows this (muted, looping, autoplaying) video instead of the still image */
+  video?: string;
+  videoWebm?: string;
   title: string;
   meta: string;
   discipline?: string;
+  /** a CSS color for the discipline label and the hover bar */
+  accent?: string;
+  /** stagger (ms) for the scroll-in animation */
+  revealDelay?: number;
   class?: string;
 }
 
-const { href, image, title, meta, discipline, class: className = '' } = Astro.props;
+const {
+  href,
+  image,
+  video,
+  videoWebm,
+  title,
+  meta,
+  discipline,
+  accent = 'var(--color-accent)',
+  revealDelay = 0,
+  class: className = '',
+} = Astro.props;
 ---
 
 <a
   href={withBase(href)}
   data-cursor-hover
-  class:list={['group block break-inside-avoid mb-8 md:mb-12', className]}
+  class:list={['reveal group block break-inside-avoid mb-8 md:mb-12', className]}
+  style={`--tile-accent: ${accent}; --reveal-delay: ${revealDelay}ms`}
 >
   <div class="overflow-hidden bg-paper-dim">
-    <img
-      src={withBase(image)}
-      alt={title}
-      loading="lazy"
-      class="w-full h-auto object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04]"
-    />
+    {video ? (
+      <video
+        class="w-full h-auto object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04]"
+        poster={withBase(image)}
+        muted
+        loop
+        playsinline
+        preload="none"
+        data-autoplay
+        aria-label={title}
+      >
+        {videoWebm && <source src={withBase(videoWebm)} type="video/webm" />}
+        <source src={withBase(video)} type="video/mp4" />
+      </video>
+    ) : (
+      <img
+        src={withBase(image)}
+        alt={title}
+        loading="lazy"
+        class="w-full h-auto object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04]"
+      />
+    )}
   </div>
+  <div class="tile-bar"></div>
   <div class="flex items-baseline justify-between mt-4 gap-4">
-    <h3 class="font-display italic text-2xl md:text-3xl leading-tight">{title}</h3>
+    <h3 class="font-display italic text-2xl md:text-3xl leading-tight transition-colors duration-300 group-hover:text-(--tile-accent)">{title}</h3>
     {discipline && (
-      <span class="shrink-0 text-[11px] uppercase tracking-widest text-ink-soft">{discipline}</span>
+      <span
+        class="shrink-0 text-[11px] uppercase tracking-widest font-semibold rounded-full px-2.5 py-1"
+        style={`color: ${accent}; background: color-mix(in srgb, ${accent} 14%, transparent)`}
+      >
+        {discipline}
+      </span>
     )}
   </div>
   <p class="text-sm text-ink-soft mt-1">{meta}</p>

@@ -99,7 +99,54 @@ const site = defineCollection({
     contactBlurb: z.string().optional(),
 
     footerTagline: z.string(),
+
+    // everything below has a default, so an older global.md without these
+    // keys still builds — the admin dashboard fills them in on first save
+    siteDescription: z.string().default('Design, motion, and fine art — a working studio.'),
+
+    navWork: z.string().default('Work'),
+    navDesign: z.string().default('Design & Branding'),
+    navMotion: z.string().default('Motion & Video'),
+    navFineArt: z.string().default('Fine Art'),
+    navAbout: z.string().default('About'),
+    navContact: z.string().default('Contact'),
+
+    marqueeText: z.string().default('Brand Identity · Editorial · Motion · Video Editing · Painting · Illustration'),
+    homeWorkHeading: z.string().default('Selected Work'),
+    homeWorkLink: z.string().default('View everything'),
+    homeFeaturedCount: z.coerce.number().int().min(1).default(6),
+
+    designEyebrow: z.string().default('Design & Branding'),
+    designHeading: z.string().default('Identity systems built to survive contact with reality.'),
+    designDescription: z.string().default('Brand identity, packaging, and editorial design case studies.'),
+    motionEyebrow: z.string().default('Motion & Video'),
+    motionHeading: z.string().default('Cut for rhythm, not just coverage.'),
+    motionDescription: z.string().default('Short-form edits, teasers, and social cuts.'),
+    fineartEyebrow: z.string().default('Fine Art'),
+    fineartHeading: z.string().default('Paintings, mostly made before sunrise.'),
+    fineartDescription: z.string().default('Paintings and studies.'),
+
+    colorPaper: hexColor('#f7f5f0'),
+    colorInk: hexColor('#201c18'),
+    colorAccent: hexColor('#c1633d'),
+    colorDesign: hexColor('#c1633d'),
+    colorMotion: hexColor('#5c7285'),
+    colorFineArt: hexColor('#d3a13b'),
+
+    autoplayVideos: z.boolean().default(true),
+    showMarquee: z.boolean().default(true),
+    animateHero: z.boolean().default(true),
   }),
 });
+
+// colors are injected into a <style> attribute, so only a strict #rrggbb
+// is accepted — anything else falls back to the default rather than
+// letting arbitrary text into the page's CSS
+function hexColor(fallback: string) {
+  return z
+    .string()
+    .optional()
+    .transform((v) => (v && /^#[0-9a-f]{6}$/i.test(v) ? v : fallback));
+}
 
 export const collections = { design, motion, fineart, site };

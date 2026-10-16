@@ -1,16 +1,17 @@
 ---
 import Layout from '../../layouts/Layout.astro';
 import ProjectTile from '../../components/ProjectTile.astro';
-import { getCollection } from 'astro:content';
+import { getCollection, getEntry } from 'astro:content';
 
+const site = (await getEntry('site', 'global')).data;
 const projects = (await getCollection('design')).sort((a, b) => a.data.order - b.data.order);
 ---
 
-<Layout title="Design & Branding — Alexandra Patsi" description="Brand identity, packaging, and editorial design case studies.">
+<Layout title={`${site.designEyebrow} — ${site.brandName}`} description={site.designDescription}>
   <section class="px-6 md:px-10 pt-28 pb-12 max-w-4xl">
-    <p class="text-sm uppercase tracking-[0.3em] text-ink-soft mb-6">Design & Branding</p>
-    <h1 class="font-display italic text-4xl md:text-6xl leading-[0.95]">
-      Identity systems built to survive contact with reality.
+    <p class="fade-up text-sm uppercase tracking-[0.3em] font-semibold text-(--color-design) mb-6">{site.designEyebrow}</p>
+    <h1 class="fade-up font-display italic text-4xl md:text-6xl leading-[0.95]" style="animation-delay: 80ms">
+      {site.designHeading}
     </h1>
   </section>
 
@@ -22,6 +23,8 @@ const projects = (await getCollection('design')).sort((a, b) => a.data.order - b
           image={p.data.cover}
           title={p.data.title}
           meta={[p.data.category, p.data.year].filter(Boolean).join(' — ')}
+          accent="var(--color-design)"
+          revealDelay={(i % 2) * 100}
           class={i % 2 === 1 ? 'sm:mt-24' : ''}
         />
       ))}

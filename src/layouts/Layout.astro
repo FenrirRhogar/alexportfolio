@@ -3,6 +3,7 @@ import Nav from '../components/Nav.astro';
 import Footer from '../components/Footer.astro';
 import Cursor from '../components/Cursor.astro';
 import { withBase } from '../lib/url';
+import { getEntry } from 'astro:content';
 import '../styles/global.css';
 
 interface Props {
@@ -11,17 +12,29 @@ interface Props {
   bodyClass?: string;
 }
 
-const {
-  title,
-  description = 'Design, motion, and fine art — a working studio.',
-  bodyClass = '',
-} = Astro.props;
+const site = (await getEntry('site', 'global')).data;
+const { title, description = site.siteDescription, bodyClass = '' } = Astro.props;
+
+// the palette is editable from the admin dashboard (already validated as
+// strict #rrggbb by the content schema); the softer shades are derived so
+// only a handful of colors ever need picking
+const themeVars = [
+  `--color-paper: ${site.colorPaper}`,
+  `--color-ink: ${site.colorInk}`,
+  `--color-paper-dim: color-mix(in srgb, ${site.colorPaper} 93%, ${site.colorInk})`,
+  `--color-ink-soft: color-mix(in srgb, ${site.colorInk} 78%, ${site.colorPaper})`,
+  `--color-accent: ${site.colorAccent}`,
+  `--color-design: ${site.colorDesign}`,
+  `--color-motion: ${site.colorMotion}`,
+  `--color-fineart: ${site.colorFineArt}`,
+].join('; ');
 ---
 
 <!doctype html>
-<html lang="en">
+<html lang="en" style={themeVars}>
   <head>
     <meta charset="UTF-8" />
+    <script is:inline>document.documentElement.classList.add('js');</script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/svg+xml" href={withBase('/favicon.svg')} />
     <title>{title}</title>
@@ -41,5 +54,41 @@ const {
       <slot />
     </main>
     <Footer />
+
+    <script>
+      const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      // fade/slide elements in as they scroll into view
+      const revealer = new IntersectionObserver(
+        (entries) => {
+          for (const e of entries) {
+            if (!e.isIntersecting) continue;
+            e.target.classList.add('is-visible');
+            revealer.unobserve(e.target);
+          }
+        },
+        { rootMargin: '0px 0px -8% 0px' },
+      );
+      document.querySelectorAll('.reveal').forEach((el) => revealer.observe(el));
+
+      // videos marked data-autoplay play (muted, looping) while on screen and
+      // pause when scrolled away, so a page full of them stays light
+      if (!reduceMotion) {
+        const player = new IntersectionObserver(
+          (entries) => {
+            for (const e of entries) {
+              const v = e.target as HTMLVideoElement;
+              if (e.isIntersecting) v.play().catch(() => {});
+              else v.pause();
+            }
+          },
+          { threshold: 0.2 },
+        );
+        document.querySelectorAll<HTMLVideoElement>('video[data-autoplay]').forEach((v) => {
+          v.muted = true;
+          player.observe(v);
+        });
+      }
+    </script>
   </body>
 </html>
