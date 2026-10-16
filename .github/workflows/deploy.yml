@@ -1,8 +1,9 @@
 name: Deploy to GitHub Pages
 
+# The site is self-hosted at alex.fenrikos.space (see admin-server/README.md),
+# so Pages only deploys when run by hand. Re-add `push: branches: [main]`
+# to make every push deploy to GitHub Pages again.
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 permissions:

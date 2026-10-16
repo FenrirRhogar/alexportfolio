@@ -19,7 +19,8 @@ import {
   siteDirOf,
   friendlyUploadError,
 } from './lib/upload.mjs';
-import { commitAndPush } from './lib/git.mjs';
+import { commitAndPush as gitCommitAndPush, syncFromRemote } from './lib/git.mjs';
+import { requestBuild, buildStatus } from './lib/build.mjs';
 import { proxyTo } from './lib/proxy.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -106,6 +107,20 @@ function setFlash(req, type, message) {
   req.session.flash = { type, message };
 }
 
+// Every save publishes by rebuilding the self-hosted site from the
+// checkout — kicked off in the background so the dashboard stays snappy.
+async function commitAndPush(message) {
+  const result = await gitCommitAndPush(message);
+  if (result.committed) requestBuild();
+  return result;
+}
+
+// the header shows whether the last rebuild of the public site went through
+admin.use((req, res, next) => {
+  res.locals.build = buildStatus();
+  next();
+});
+
 function requireAuth(req, res, next) {
   if (req.session.authed) return next();
   return res.redirect(303, '/admin/login');
@@ -150,6 +165,12 @@ admin.get('/', requireAuth, (req, res) => {
     count: listEntries(c.key).length,
   }));
   res.render('dashboard', { collections, flash: flash(req) });
+});
+
+admin.post('/rebuild', requireAuth, (req, res) => {
+  requestBuild();
+  setFlash(req, 'success', 'Rebuilding the public site — changes go live in about a minute.');
+  res.redirect(303, '/admin');
 });
 
 // ---------- site-wide content (singleton: src/content/site/global.md) ----------
@@ -626,6 +647,20 @@ app.use('/admin', admin);
 // is actually served from.
 
 app.use(proxyTo(PUBLIC_SITE_ORIGIN));
+
+// Pick up commits pushed to GitHub from elsewhere (e.g. a laptop) and
+// rebuild when any arrive. Also builds once at startup so dist/ always
+// matches the checkout.
+const SYNC_INTERVAL_MS = Number(process.env.SYNC_INTERVAL_SECONDS || 60) * 1000;
+async function syncAndBuild() {
+  try {
+    if ((await syncFromRemote()).changed) requestBuild();
+  } catch (err) {
+    console.error('Sync with GitHub failed:', err.stderr || err.message);
+  }
+}
+requestBuild();
+setInterval(syncAndBuild, SYNC_INTERVAL_MS);
 
 app.listen(PORT, () => {
   console.log(`Portfolio admin listening on http://localhost:${PORT} (public site proxied from ${PUBLIC_SITE_ORIGIN})`);

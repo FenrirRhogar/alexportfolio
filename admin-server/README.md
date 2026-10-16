@@ -130,6 +130,28 @@ Only use this if you're not running Docker on the server at all — you'll
 need `git` and `openssh-client`-equivalent tooling installed natively, and
 `SITE_REPO_PATH` in `.env` pointing at the real checkout path.
 
+## Self-hosting the public site
+
+The app always rebuilds the site into `dist/` in the checkout after every
+save (and once at startup), and every 60 seconds it pulls whatever was
+pushed to GitHub from elsewhere — e.g. edits pushed from a laptop — and
+rebuilds when anything new arrives. GitHub stays the shared history; this
+server is where the site actually lives.
+
+To serve that build instead of GitHub Pages, set in `.env`:
+
+```sh
+PUBLIC_SITE_ORIGIN=http://site   # any static server whose root is <checkout>/dist
+SITE_URL=https://alex.example.com
+SITE_BASE=/
+```
+
+and run a static server (e.g. `nginx:alpine`) with the checkout mounted
+read-only and its root at `dist/`. Builds land in `.dist-next/` and are
+swapped in only once they succeed, so a failed build leaves the last good
+site live; the dashboard's **Republish** button shows failures and retries.
+The Pages workflow is manual-only (`workflow_dispatch`) while self-hosting.
+
 ## Putting it behind your reverse proxy
 
 Point your existing reverse proxy at `http://<server>:3000` and terminate

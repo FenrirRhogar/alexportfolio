@@ -1,5 +1,8 @@
 # build output
 dist/
+# self-hosted build scratch dirs (admin-server/lib/build.mjs)
+.dist-next/
+.dist-old/
 
 # dependencies
 node_modules/

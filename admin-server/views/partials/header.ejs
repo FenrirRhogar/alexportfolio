@@ -21,6 +21,9 @@
       <a href="/admin/site">⚙️ Site content</a>
     </nav>
     <a href="/" class="view-site-link" target="_blank" rel="noopener">View site ↗</a>
+    <form method="post" action="/admin/rebuild" class="logout-form" title="<%= build.state === 'failed' ? 'Last rebuild failed: ' + build.error : 'Rebuild the public site now' %>">
+      <button type="submit"><%= build.state === 'building' ? 'Publishing…' : build.state === 'failed' ? '⚠ Publish failed — retry' : 'Republish' %></button>
+    </form>
     <form method="post" action="/admin/logout" class="logout-form">
       <button type="submit">Log out</button>
     </form>
