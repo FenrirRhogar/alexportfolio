@@ -104,21 +104,27 @@
 
     const xhr = new XMLHttpRequest();
     xhr.open('POST', form.action || location.href);
+    xhr.setRequestHeader('X-Requested-With', 'upload');
     xhr.upload.addEventListener('progress', (ev) => {
       if (ev.lengthComputable) ui.set('Uploading…', ev.loaded / ev.total, `${mb(ev.loaded)} of ${mb(ev.total)}`);
     });
     xhr.upload.addEventListener('load', () => ui.set('Saving…', null, 'Almost done'));
     xhr.addEventListener('load', () => {
-      if (xhr.status >= 200 && xhr.status < 400) {
-        // show the page the server answered with (it carries the "Saved" message)
-        history.replaceState(null, '', xhr.responseURL);
-        document.open();
-        document.write(xhr.responseText);
-        document.close();
+      let reply = null;
+      try {
+        reply = JSON.parse(xhr.responseText);
+      } catch {
+        // not from the dashboard itself — e.g. Cloudflare refusing the request
+      }
+      if (reply?.redirect) {
+        ui.set('Saved ✓', 1, 'Opening…');
+        location.assign(reply.redirect);
+      } else if (reply?.error) {
+        ui.fail(reply.error);
       } else if (xhr.status === 413) {
         ui.fail('Those files are too large to upload in one go. Try fewer at a time.');
       } else {
-        ui.fail(`The server answered with an error (${xhr.status}). Nothing was lost — try again.`);
+        ui.fail(`Something went wrong (error ${xhr.status}). Reload the page and check whether it saved.`);
       }
     });
     xhr.addEventListener('error', () => ui.fail('The connection dropped. Check your internet and try again.'));

@@ -52,6 +52,18 @@ const admin = express.Router();
 // first of all: nothing under /admin answers without Cloudflare Access (if configured)
 admin.use(requireCloudflareAccess);
 
+// Uploads sent by public/upload.js (to show a progress bar) can't stop the
+// browser from silently following a redirect — which would also use up the
+// one-time "Saved" message. So for those, answer with where to go next and
+// let the page navigate there itself.
+const isScriptUpload = (req) => req.get('x-requested-with') === 'upload';
+admin.use((req, res, next) => {
+  if (isScriptUpload(req)) {
+    res.redirect = (status, url) => res.json({ redirect: typeof status === 'string' ? status : url });
+  }
+  next();
+});
+
 // Security headers — scoped to /admin only (not the proxied public site,
 // which has its own headers from wherever it's actually served).
 admin.use(
@@ -62,7 +74,7 @@ admin.use(
         scriptSrc: ["'self'"], // every admin script is an external file — no inline handlers anywhere
         styleSrc: ["'self'", 'https://fonts.googleapis.com'],
         fontSrc: ["'self'", 'https://fonts.gstatic.com'],
-        imgSrc: ["'self'"],
+        imgSrc: ["'self'", 'blob:'], // blob: — upload.js reads photos locally to shrink them before upload
         mediaSrc: ["'self'"],
         connectSrc: ["'self'"],
         formAction: ["'self'"],
@@ -852,6 +864,7 @@ admin.post('/design/:slug/trifolds/:index/delete', requireAuth, async (req, res)
 admin.use((err, req, res, next) => {
   console.error(err);
   res.status(err.status && err.status < 500 ? err.status : 400);
+  if (isScriptUpload(req)) return res.json({ error: friendlyUploadError(err) });
   res.render('error', { message: friendlyUploadError(err) });
 });
 
@@ -868,6 +881,9 @@ app.use(
     },
   }),
 );
+// a file uploaded moments ago isn't in dist/ until the rebuild finishes —
+// serve it straight from public/media meanwhile, so it never shows as broken
+app.use('/media', express.static(join(process.env.SITE_REPO_PATH, 'public', 'media')));
 app.use((req, res) => res.status(404).type('text').send('Not found'));
 
 // build once at startup so dist/ always matches the content on disk
