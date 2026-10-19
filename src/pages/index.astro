@@ -10,8 +10,7 @@ const design = (await getCollection('design')).filter((p) => p.data.featured);
 const motion = (await getCollection('motion')).filter((p) => p.data.featured);
 const fineart = (await getCollection('fineart')).filter((p) => p.data.featured);
 
-const featured = [
-  ...design.map((p) => ({
+const designTiles = design.map((p) => ({
     href: `/design/${p.id}/`,
     image: p.data.cover,
     title: p.data.title,
@@ -19,8 +18,9 @@ const featured = [
     discipline: 'Design',
     accent: 'var(--color-design)',
     order: p.data.order,
-  })),
-  ...motion.map((p) => ({
+  }))
+  .sort((a, b) => a.order - b.order);
+const motionTiles = motion.map((p) => ({
     href: `/motion/${p.id}/`,
     image: p.data.poster,
     video: p.data.video,
@@ -30,8 +30,9 @@ const featured = [
     discipline: 'Motion',
     accent: 'var(--color-motion)',
     order: p.data.order,
-  })),
-  ...fineart.map((p) => ({
+  }))
+  .sort((a, b) => a.order - b.order);
+const fineartTiles = fineart.map((p) => ({
     href: `/fine-art/${p.id}/`,
     image: p.data.image,
     title: p.data.title,
@@ -39,11 +40,21 @@ const featured = [
     discipline: 'Fine Art',
     accent: 'var(--color-fineart)',
     order: p.data.order,
-  })),
-]
-  // interleave disciplines rather than blocking them, so the grid reads as curated, not sorted
-  .sort((a, b) => a.order - b.order)
-  .slice(0, site.homeFeaturedCount);
+  }))
+  .sort((a, b) => a.order - b.order);
+
+// Take one from each discipline in turn (each in its own dashboard order),
+// so every discipline gets a place — order numbers are per collection, so
+// sorting them all together would let one discipline crowd out the others.
+// admin-server/server.mjs (homepageSelection) mirrors this to tell the
+// dashboard which featured projects actually make it onto the homepage.
+const featured = [];
+for (let i = 0; featured.length < site.homeFeaturedCount; i++) {
+  const round = [designTiles[i], motionTiles[i], fineartTiles[i]].filter(Boolean);
+  if (!round.length) break;
+  featured.push(...round);
+}
+featured.length = Math.min(featured.length, site.homeFeaturedCount);
 
 // repeated so the strip is wider than any screen; the animation scrolls
 // exactly half its width, which makes the loop seamless

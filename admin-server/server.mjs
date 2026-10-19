@@ -144,6 +144,24 @@ function publish() {
   requestBuild();
 }
 
+/** Which featured projects actually appear on the homepage — the same
+ * pick as src/pages/index.astro: one from each collection in turn, each in
+ * its own order, up to the homepage's limit. Returns { shown: Set of
+ * "collection/slug", limit }. */
+function homepageSelection() {
+  const limit = Number(getEntry('site', 'global')?.data.homeFeaturedCount) || 6;
+  const queues = Object.keys(COLLECTIONS).map((key) =>
+    listEntries(key)
+      .filter((e) => e.data.featured)
+      .map((e) => `${key}/${e.slug}`),
+  );
+  const shown = [];
+  for (let i = 0; shown.length < limit && queues.some((q) => q[i]); i++) {
+    shown.push(...queues.map((q) => q[i]).filter(Boolean));
+  }
+  return { shown: new Set(shown.slice(0, limit)), limit };
+}
+
 // the header shows whether the last rebuild of the public site went through
 admin.use((req, res, next) => {
   res.locals.build = buildStatus();
@@ -194,6 +212,7 @@ admin.post('/logout', (req, res) => {
 // ---------- dashboard ----------
 
 admin.get('/', requireAuth, (req, res) => {
+  const { shown, limit } = homepageSelection();
   const collections = Object.values(COLLECTIONS).map((c) => {
     const entries = listEntries(c.key);
     return {
@@ -202,11 +221,14 @@ admin.get('/', requireAuth, (req, res) => {
       singular: c.singular,
       count: entries.length,
       featured: entries.filter((e) => e.data.featured).length,
+      onHomepage: entries.filter((e) => shown.has(`${c.key}/${e.slug}`)).length,
     };
   });
+  const featuredTotal = collections.reduce((n, c) => n + c.featured, 0);
   const media = listMedia();
   res.render('dashboard', {
     collections,
+    homepage: { limit, featuredTotal },
     media: {
       count: media.length,
       size: media.reduce((sum, m) => sum + m.size, 0),
@@ -543,7 +565,7 @@ for (const key of Object.keys(COLLECTIONS)) {
   const uploadMw = upload.fields(uploadFieldsFor(schema));
 
   admin.get(`/${key}`, requireAuth, (req, res) => {
-    res.render('list', { schema, entries: listEntries(key), flash: flash(req) });
+    res.render('list', { schema, entries: listEntries(key), homepage: homepageSelection(), flash: flash(req) });
   });
 
   admin.post(`/${key}/reorder`, requireAuth, async (req, res) => {

@@ -21,7 +21,8 @@
         <strong><%= e.data.title %></strong>
         <span class="muted">
           <%= [e.data.category || e.data.role || e.data.medium, e.data.year].filter(Boolean).join(' — ') %>
-          <% if (e.data.featured) { %> · <span class="featured-tag">★ on homepage</span><% } %>
+          <% if (e.data.featured && homepage.shown.has(schema.key + '/' + e.slug)) { %> · <span class="featured-tag">★ on homepage</span>
+          <% } else if (e.data.featured) { %> · <span class="featured-tag not-shown" title="The homepage shows <%= homepage.limit %> featured projects, taking one from each section in turn. Raise the number in Site content → Homepage — work, or unfeature another project.">★ featured, but not shown — the homepage shows <%= homepage.limit %></span><% } %>
         </span>
       </div>
       <div class="entry-actions">

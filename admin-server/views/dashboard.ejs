@@ -9,11 +9,18 @@
   </div>
 <% } %>
 
+<% if (homepage.featuredTotal > homepage.limit) { %>
+  <div class="flash info">
+    <%= homepage.featuredTotal %> projects are featured, but the homepage shows <%= homepage.limit %> — it takes one from each section in turn.
+    To show more, raise the number in <a href="/admin/site">Site content → Homepage — work</a>.
+  </div>
+<% } %>
+
 <div class="card-grid">
   <% collections.forEach((c) => { %>
     <a class="card card-<%= c.key %>" href="/admin/<%= c.key %>">
       <h2><%= c.label %></h2>
-      <p><%= c.count %> <%= c.count === 1 ? c.singular.toLowerCase() : c.singular.toLowerCase() + 's' %> · <%= c.featured %> on the homepage</p>
+      <p><%= c.count %> <%= c.count === 1 ? c.singular.toLowerCase() : c.singular.toLowerCase() + 's' %> · <%= c.onHomepage %> on the homepage<% if (c.featured > c.onHomepage) { %> (<%= c.featured - c.onHomepage %> more featured)<% } %></p>
     </a>
   <% }) %>
   <a class="card" href="/admin/site">

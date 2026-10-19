@@ -313,3 +313,4 @@ h1 { font-size: 2rem; margin: 0 0 0.25rem; }
 }
 .add-pages-form { flex-wrap: wrap; }
 .add-pages-form .library-picker { flex-basis: 100%; margin: 0.25rem 0 0; }
+.featured-tag.not-shown { color: var(--ochre); }
