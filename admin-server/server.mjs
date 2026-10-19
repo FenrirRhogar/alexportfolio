@@ -11,7 +11,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { COLLECTIONS, getCollection, SITE_SECTIONS } from './lib/schema.mjs';
 import { listEntries, getEntry, createEntry, updateEntry, upsertEntry, deleteEntry, reorderEntries, SITE_REPO } from './lib/content.mjs';
 import { readFrontmatter } from './lib/frontmatter.mjs';
-import { listMedia, listFolders, placeLibraryUploads, deleteLibraryFile } from './lib/media.mjs';
+import { listMedia, listFolders, placeLibraryUploads, deleteLibraryFile, isLibraryFile, isUsedAnywhere } from './lib/media.mjs';
 import { clientIp, loginLimiterPerIp, loginLimiterGlobal, requireCloudflareAccess } from './lib/auth.mjs';
 import {
   upload,
@@ -452,6 +452,51 @@ function placeGalleryUploads(schema, files, slug, keepExisting) {
   return [...keepExisting, ...added];
 }
 
+/** Files chosen from the media library instead of uploaded ("pick_<field>"
+ * for cover/poster/video…, "galleryPick" for gallery images) — only ever
+ * existing library files of the right kind. */
+function pickedSingles(schema, body) {
+  const picked = {};
+  for (const f of [schema.image, schema.poster, schema.video, schema.videoWebm].filter(Boolean)) {
+    const path = body[`pick_${f.name}`];
+    if (path && isLibraryFile(path, f.kind)) picked[f.name] = path;
+  }
+  return picked;
+}
+
+function pickedGallery(schema, body) {
+  if (!schema.gallery) return [];
+  return [].concat(body.galleryPick || []).filter((path) => isLibraryFile(path, 'image'));
+}
+
+/** Library images/videos for the form's "choose from the media library"
+ * pickers — unused ones first, since those are usually what was just uploaded. */
+function pickerLibrary() {
+  const files = listMedia().filter((m) => m.kind === 'image' || m.kind === 'video');
+  files.sort((a, b) => Number(a.usedBy.length > 0) - Number(b.usedBy.length > 0) || b.modified - a.modified);
+  return { image: files.filter((m) => m.kind === 'image'), video: files.filter((m) => m.kind === 'video') };
+}
+
+/** Whether a media file was uploaded through this entry's own form (as
+ * opposed to picked from the library, which may be shared). */
+function ownedBy(key, slug, sitePath) {
+  if (key === 'design') return sitePath.startsWith(`/media/design/${slug}/`);
+  const name = sitePath.split('/').pop();
+  return sitePath.startsWith(`/media/${key}/`) && (name.startsWith(`${slug}.`) || name.startsWith(`${slug}-`));
+}
+
+/** After a save, deletes files this entry had uploaded itself that it no
+ * longer uses — unless some other entry uses them too. Library files picked
+ * into the entry are never deleted; they just become unused again. */
+function cleanupDropped(key, slug, schema, before, after) {
+  const fields = [schema.image, schema.poster, schema.video, schema.videoWebm].filter(Boolean).map((f) => f.name);
+  const paths = (data) => [...fields.map((f) => data[f]), ...(schema.gallery ? data[schema.gallery.name] || [] : [])].filter(Boolean);
+  const still = new Set(paths(after));
+  for (const path of paths(before)) {
+    if (!still.has(path) && ownedBy(key, slug, path) && !isUsedAnywhere(path)) deleteMediaFile(path);
+  }
+}
+
 // ---------- collection routes ----------
 
 for (const key of Object.keys(COLLECTIONS)) {
@@ -479,17 +524,24 @@ for (const key of Object.keys(COLLECTIONS)) {
   });
 
   admin.get(`/${key}/new`, requireAuth, (req, res) => {
-    res.render('form', { schema, entry: null, flash: flash(req) });
+    res.render('form', { schema, entry: null, library: pickerLibrary(), flash: flash(req) });
   });
 
   admin.post(`/${key}/new`, requireAuth, uploadMw, async (req, res) => {
     try {
       const fields = coerceFields(schema, req.body);
+      const picked = pickedSingles(schema, req.body);
+      for (const f of [schema.image, schema.poster, schema.video].filter(Boolean)) {
+        if (!f.optional && !req.files?.[f.name]?.[0] && !picked[f.name]) {
+          throw new Error(`${f.label} is missing — upload one or choose one from the media library.`);
+        }
+      }
       // create the entry first (gets us a real, unique slug), then place
       // uploads using that slug, then patch the entry with the paths
       const slug = createEntry(key, fields, {});
-      const mediaPaths = placeSingleUploads(schema, req.files, slug);
-      if (schema.gallery) mediaPaths.gallery = placeGalleryUploads(schema, req.files, slug, []);
+      // an uploaded file wins over one picked from the library for the same slot
+      const mediaPaths = { ...picked, ...placeSingleUploads(schema, req.files, slug) };
+      if (schema.gallery) mediaPaths.gallery = placeGalleryUploads(schema, req.files, slug, pickedGallery(schema, req.body));
       updateEntry(key, slug, {}, mediaPaths);
 
       publish();
@@ -505,7 +557,7 @@ for (const key of Object.keys(COLLECTIONS)) {
   admin.get(`/${key}/:slug/edit`, requireAuth, (req, res) => {
     const entry = getEntry(key, req.params.slug);
     if (!entry) return res.status(404).send('Not found');
-    res.render('form', { schema, entry, flash: flash(req) });
+    res.render('form', { schema, entry, library: pickerLibrary(), flash: flash(req) });
   });
 
   admin.post(`/${key}/:slug/edit`, requireAuth, uploadMw, async (req, res) => {
@@ -515,17 +567,19 @@ for (const key of Object.keys(COLLECTIONS)) {
       if (!existing) return res.status(404).send('Not found');
 
       const fields = coerceFields(schema, req.body);
-      const mediaPaths = placeSingleUploads(schema, req.files, slug);
+      // an uploaded file wins over one picked from the library for the same slot
+      const mediaPaths = { ...pickedSingles(schema, req.body), ...placeSingleUploads(schema, req.files, slug) };
 
       if (schema.gallery) {
         const existingGallery = existing.data[schema.gallery.name] || [];
         const toRemove = new Set([].concat(req.body.removeGallery || []));
         const kept = existingGallery.filter((src) => !toRemove.has(src));
-        for (const src of toRemove) deleteMediaFile(src);
-        mediaPaths.gallery = placeGalleryUploads(schema, req.files, slug, kept);
+        const picked = pickedGallery(schema, req.body).filter((src) => !kept.includes(src));
+        mediaPaths.gallery = placeGalleryUploads(schema, req.files, slug, [...kept, ...picked]);
       }
 
       updateEntry(key, slug, fields, mediaPaths);
+      cleanupDropped(key, slug, schema, existing.data, getEntry(key, slug).data);
       publish();
       setFlash(req, 'success', `Saved. ${PUBLISHED}`);
       res.redirect(303, `/admin/${key}`);

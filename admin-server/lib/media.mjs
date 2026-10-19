@@ -126,3 +126,18 @@ export function deleteLibraryFile(sitePath) {
   }
   unlinkSync(abs);
 }
+
+export function mediaKindOf(sitePath) {
+  return KIND_BY_EXT[extname(String(sitePath || '')).toLowerCase()] || 'other';
+}
+
+/** True when `sitePath` is an existing library file of the given kind
+ * (image/video) — the check behind "choose from the media library". */
+export function isLibraryFile(sitePath, kind) {
+  const abs = resolveMediaPath(sitePath);
+  return Boolean(abs && abs !== MEDIA_ROOT && existsSync(abs) && statSync(abs).isFile() && mediaKindOf(sitePath) === kind);
+}
+
+export function isUsedAnywhere(sitePath) {
+  return contentFiles().some((d) => d.raw.includes(sitePath));
+}
