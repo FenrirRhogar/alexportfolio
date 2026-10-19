@@ -69,13 +69,15 @@
     <%- include('partials/library-picker', { files: library.image, name: 'galleryPick', multiple: true, current: entry ? (entry.data[schema.gallery.name] || []) : [] }) %>
   <% } %>
 
+  <% if (!entry && schema.hasFlipbooks) { %>
+    <%- include('partials/new-book-fields') %>
+  <% } %>
+
   <div class="form-actions">
     <button type="submit">Save</button>
   </div>
 </form>
 
-<% if (schema.hasFlipbooks) { %>
-  <%- include('partials/flipbooks', { schema, entry }) %>
-<% } %>
+<%- include('partials/flipbooks', { schema, entry }) %>
 
 <%- include('partials/footer') %>

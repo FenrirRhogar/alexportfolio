@@ -133,10 +133,10 @@ export function deleteMediaFileDir(sitePath) {
  * deleted entry — design keeps each project in its own <slug>/ subfolder,
  * motion/fineart prefix every flat filename with the slug instead. */
 export function deleteEntryMedia(collectionKey, slug) {
-  if (collectionKey === 'design') {
-    rmSync(join(SITE_REPO, 'public', 'media', 'design', slug), { recursive: true, force: true });
-    return;
-  }
+  // the entry's own folder: all of a design project's files, and any
+  // flipbooks/trifolds of other collections
+  rmSync(join(SITE_REPO, 'public', 'media', collectionKey, slug), { recursive: true, force: true });
+  if (collectionKey === 'design') return;
   const dir = join(SITE_REPO, 'public', 'media', collectionKey);
   if (!existsSync(dir)) return;
   // exact basenames only (plus the gallery-NNN prefix) — a loose

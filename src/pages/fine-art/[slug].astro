@@ -1,5 +1,7 @@
 ---
 import Layout from '../../layouts/Layout.astro';
+import FlipBook from '../../components/FlipBook.astro';
+import TrifoldViewer from '../../components/TrifoldViewer.astro';
 import { getCollection, getEntry, render } from 'astro:content';
 import { withBase } from '../../lib/url';
 
@@ -11,7 +13,7 @@ export async function getStaticPaths() {
 const { entry } = Astro.props;
 const site = (await getEntry('site', 'global')).data;
 const { Content } = await render(entry);
-const { title, medium, dimensions, year, status, image, gallery } = entry.data;
+const { title, medium, dimensions, year, status, image, gallery, booklets, trifolds } = entry.data;
 
 const meta = [medium, dimensions, year].filter(Boolean).join(' — ') + (status ? ` · ${status}` : '');
 ---
@@ -36,6 +38,34 @@ const meta = [medium, dimensions, year].filter(Boolean).join(' — ') + (status 
         </div>
       )}
     </div>
+
+    {booklets.length > 0 && (
+      <div class="mt-20 space-y-20">
+        {booklets.map((b) => (
+          <div>
+            <p class="text-center text-sm uppercase tracking-widest text-ink-soft mb-6">{b.title}</p>
+            <FlipBook
+              id={`flipbook-${b.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}
+              title={b.title}
+              pages={b.pages}
+              width={b.width}
+              height={b.height}
+            />
+          </div>
+        ))}
+      </div>
+    )}
+
+    {trifolds.length > 0 && (
+      <div class="mt-20 space-y-20">
+        {trifolds.map((t) => (
+          <div>
+            <p class="text-center text-sm uppercase tracking-widest text-ink-soft mb-6">{t.title}</p>
+            <TrifoldViewer title={t.title} outside={t.outside} inside={t.inside} />
+          </div>
+        ))}
+      </div>
+    )}
 
     <div class="mt-16 text-center">
       <a href={withBase('/fine-art/')} data-cursor-hover class="link-hover text-sm uppercase tracking-widest text-ink-soft">

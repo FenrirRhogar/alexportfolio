@@ -1,6 +1,33 @@
 import { defineCollection, z } from 'astro:content';
 import { glob } from 'astro/loaders';
 
+// flip-through books and folded print pieces — used by both Design and Fine
+// Art (e.g. a comic shown as a book)
+const booklets = z
+  .array(
+    z.object({
+      title: z.string(),
+      pdf: z.string().optional(),
+      width: z.number(),
+      height: z.number(),
+      pages: z.array(z.string()),
+    }),
+  )
+  .default([]);
+
+// a trifold is one sheet printed on both sides and folded into three —
+// not a sequence of pages, so it gets its own "two flat sides" display
+// rather than the page-flip treatment `booklets` gives real booklets
+const trifolds = z
+  .array(
+    z.object({
+      title: z.string(),
+      outside: z.string(),
+      inside: z.string(),
+    }),
+  )
+  .default([]);
+
 const design = defineCollection({
   loader: glob({ pattern: '**/*.md', base: './src/content/design' }),
   schema: z.object({
@@ -11,29 +38,8 @@ const design = defineCollection({
     summary: z.string(),
     cover: z.string(),
     gallery: z.array(z.string()).default([]),
-    booklets: z
-      .array(
-        z.object({
-          title: z.string(),
-          pdf: z.string().optional(),
-          width: z.number(),
-          height: z.number(),
-          pages: z.array(z.string()),
-        }),
-      )
-      .default([]),
-    // a trifold is one sheet printed on both sides and folded into three —
-    // not a sequence of pages, so it gets its own "two flat sides" display
-    // rather than the page-flip treatment `booklets` gives real booklets
-    trifolds: z
-      .array(
-        z.object({
-          title: z.string(),
-          outside: z.string(),
-          inside: z.string(),
-        }),
-      )
-      .default([]),
+    booklets,
+    trifolds,
     tags: z.array(z.string()).default([]),
     featured: z.boolean().default(false),
     order: z.number().default(0),
@@ -67,6 +73,8 @@ const fineart = defineCollection({
     summary: z.string().optional(),
     image: z.string(),
     gallery: z.array(z.string()).default([]),
+    booklets,
+    trifolds,
     featured: z.boolean().default(false),
     order: z.number().default(0),
   }),

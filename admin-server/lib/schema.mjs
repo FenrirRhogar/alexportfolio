@@ -65,6 +65,8 @@ export const COLLECTIONS = {
     ],
     image: { name: 'image', label: 'Image', kind: 'image' },
     gallery: { name: 'gallery', label: 'Gallery images', kind: 'image' },
+    // e.g. comic pages shown as a flip-through book
+    hasFlipbooks: true,
   },
 };
 

@@ -420,6 +420,15 @@ function uploadFieldsFor(schema) {
   if (schema.video) fields.push({ name: schema.video.name, maxCount: 1 });
   if (schema.videoWebm) fields.push({ name: schema.videoWebm.name, maxCount: 1 });
   if (schema.gallery) fields.push({ name: 'galleryNew', maxCount: 50 });
+  // the new-entry form can create a first flipbook and/or trifold in one go
+  if (schema.hasFlipbooks) {
+    fields.push(
+      { name: 'newBookletPages', maxCount: 200 },
+      { name: 'newBookletPdf', maxCount: 1 },
+      { name: 'outside', maxCount: 1 },
+      { name: 'inside', maxCount: 1 },
+    );
+  }
   return fields;
 }
 
@@ -499,7 +508,9 @@ function pickerLibrary() {
 /** Whether a media file was uploaded through this entry's own form (as
  * opposed to picked from the library, which may be shared). */
 function ownedBy(key, slug, sitePath) {
-  if (key === 'design') return sitePath.startsWith(`/media/design/${slug}/`);
+  // everything in the entry's own folder (design files, any flipbook/trifold)
+  if (sitePath.startsWith(`/media/${key}/${slug}/`)) return true;
+  if (key === 'design') return false;
   const name = sitePath.split('/').pop();
   return sitePath.startsWith(`/media/${key}/`) && (name.startsWith(`${slug}.`) || name.startsWith(`${slug}-`));
 }
@@ -555,12 +566,24 @@ for (const key of Object.keys(COLLECTIONS)) {
           throw new Error(`${f.label} is missing — upload one or choose one from the media library.`);
         }
       }
+      if (Boolean(req.files?.outside?.[0]) !== Boolean(req.files?.inside?.[0])) {
+        throw new Error('A trifold needs both its outside and inside image — or leave both empty.');
+      }
       // create the entry first (gets us a real, unique slug), then place
       // uploads using that slug, then patch the entry with the paths
       const slug = createEntry(key, fields, {});
       // an uploaded file wins over one picked from the library for the same slot
       const mediaPaths = { ...picked, ...placeSingleUploads(schema, req.files, slug) };
       if (schema.gallery) mediaPaths.gallery = placeGalleryUploads(schema, req.files, slug, pickedGallery(schema, req.body));
+      if (schema.hasFlipbooks) {
+        const bookletPages = req.files?.newBookletPages || [];
+        const outside = req.files?.outside?.[0];
+        const inside = req.files?.inside?.[0];
+        if (bookletPages.length) {
+          mediaPaths.booklets = [createBooklet(key, slug, bookletPages, req.files?.newBookletPdf?.[0], req.body.newBookletTitle)];
+        }
+        if (outside || inside) mediaPaths.trifolds = [createTrifold(key, slug, outside, inside, req.body.newTrifoldTitle)];
+      }
       updateEntry(key, slug, {}, mediaPaths);
 
       publish();
@@ -622,7 +645,7 @@ for (const key of Object.keys(COLLECTIONS)) {
   });
 }
 
-// ---------- design-only: flipbooks (booklets) and trifolds ----------
+// ---------- uploads for flipbooks (booklets) and trifolds ----------
 // Both are ordered image sequences rather than a single value, so they get
 // their own small sub-resource routes instead of the generic field form.
 
@@ -637,8 +660,8 @@ const trifoldUpload = upload.fields([
   { name: 'inside', maxCount: 1 },
 ]);
 
-function requireDesignEntry(req, res) {
-  const entry = getEntry('design', req.params.slug);
+function requireEntry(key, req, res) {
+  const entry = getEntry(key, req.params.slug);
   if (!entry) {
     res.status(404).send('Not found');
     return null;
@@ -646,230 +669,244 @@ function requireDesignEntry(req, res) {
   return entry;
 }
 
-admin.post('/design/:slug/booklets', requireAuth, bookletCreateUpload, async (req, res) => {
-  const { slug } = req.params;
-  try {
-    const entry = requireDesignEntry(req, res);
-    if (!entry) return;
-    const pageFiles = req.files?.newBookletPages || [];
-    if (pageFiles.length === 0) throw new Error('Choose at least one page image.');
+/** Builds a flipbook from uploaded page images (in order) plus an optional
+ * source PDF, stored in its own folder under the entry's media folder. */
+function createBooklet(key, slug, pageFiles = [], pdfFile, title) {
+  if (!pageFiles.length) throw new Error('Choose at least one page image.');
+  // every page is shown at the first page's proportions
+  const { width, height } = readImageDimensions(pageFiles[0]);
+  const publicDir = `media/${key}/${slug}/flipbook-${Date.now()}`;
+  const booklet = {
+    title: (title || 'Untitled flipbook').trim(),
+    width,
+    height,
+    pages: placeMultiple(pageFiles, { publicDir, prefix: 'page' }),
+  };
+  if (pdfFile) booklet.pdf = placeUpload(pdfFile, { publicDir, baseName: 'source' });
+  return booklet;
+}
 
-    const { width, height } = readImageDimensions(pageFiles[0]);
-    const publicDir = `media/design/${slug}/flipbook-${Date.now()}`;
-    const pages = placeMultiple(pageFiles, { publicDir, prefix: 'page' });
+/** A trifold: one sheet's outside and inside, in its own folder. */
+function createTrifold(key, slug, outsideFile, insideFile, title) {
+  if (!outsideFile || !insideFile) throw new Error('Both outside and inside images are required.');
+  const publicDir = `media/${key}/${slug}/trifold-${Date.now()}`;
+  return {
+    title: (title || 'Untitled trifold').trim(),
+    outside: placeUpload(outsideFile, { publicDir, baseName: 'outside' }),
+    inside: placeUpload(insideFile, { publicDir, baseName: 'inside' }),
+  };
+}
 
-    const booklet = { title: (req.body.title || 'Untitled flipbook').trim(), width, height, pages };
-    const pdfFile = req.files?.newBookletPdf?.[0];
-    if (pdfFile) booklet.pdf = placeUpload(pdfFile, { publicDir, baseName: 'source' });
+// ---------- flipbooks & trifolds (every collection with hasFlipbooks) ----------
 
-    const booklets = [...(entry.data.booklets || []), booklet];
-    updateEntry('design', slug, {}, { booklets });
-    publish();
-    setFlash(req, 'success', `Flipbook added. ${PUBLISHED}`);
-  } catch (err) {
-    console.error(err);
-    setFlash(req, 'error', `Could not add flipbook: ${err.message}`);
-  }
-  res.redirect(303, `/admin/design/${slug}/edit#flipbooks`);
-});
+for (const key of Object.keys(COLLECTIONS).filter((k) => COLLECTIONS[k].hasFlipbooks)) {
 
-admin.post('/design/:slug/booklets/:index/pages', requireAuth, bookletPagesUpload, async (req, res) => {
-  const { slug, index } = req.params;
-  const idx = Number(index);
-  try {
-    const entry = requireDesignEntry(req, res);
-    if (!entry) return;
-    const booklets = entry.data.booklets || [];
-    const booklet = booklets[idx];
-    if (!booklet) throw new Error('Flipbook not found.');
-    const newFiles = req.files?.morePages || [];
-    if (newFiles.length === 0) throw new Error('Choose at least one page image.');
-
-    const publicDir = booklet.pages.length ? siteDirOf(booklet.pages[0]) : `media/design/${slug}/flipbook-${Date.now()}`;
-    const added = placeMultiple(newFiles, { publicDir, prefix: 'page' });
-    booklets[idx] = { ...booklet, pages: [...booklet.pages, ...added] };
-    updateEntry('design', slug, {}, { booklets });
-    publish();
-    setFlash(req, 'success', `Pages added. ${PUBLISHED}`);
-  } catch (err) {
-    console.error(err);
-    setFlash(req, 'error', `Could not add pages: ${err.message}`);
-  }
-  res.redirect(303, `/admin/design/${slug}/edit#flipbooks`);
-});
-
-admin.post('/design/:slug/booklets/:index/reorder-pages', requireAuth, async (req, res) => {
-  const { slug, index } = req.params;
-  const idx = Number(index);
-  const entry = getEntry('design', slug);
-  const booklets = entry?.data.booklets || [];
-  const booklet = booklets[idx];
-  const incoming = req.body.pages;
-  const validSet = Array.isArray(incoming) && new Set(incoming).size === incoming.length && incoming.every((p) => booklet?.pages.includes(p));
-
-  if (!entry || !booklet || !validSet || incoming.length !== booklet.pages.length) {
-    return res.status(400).json({ ok: false });
-  }
-
-  booklets[idx] = { ...booklet, pages: incoming };
-  updateEntry('design', slug, {}, { booklets });
-  publish();
-  res.json({ ok: true });
-});
-
-admin.post('/design/:slug/booklets/:index/delete-page', requireAuth, async (req, res) => {
-  const { slug, index } = req.params;
-  const idx = Number(index);
-  try {
-    const entry = requireDesignEntry(req, res);
-    if (!entry) return;
-    const booklets = entry.data.booklets || [];
-    const booklet = booklets[idx];
-    if (!booklet) throw new Error('Flipbook not found.');
-
-    const page = req.body.page;
-    deleteMediaFile(page);
-    booklets[idx] = { ...booklet, pages: booklet.pages.filter((p) => p !== page) };
-    updateEntry('design', slug, {}, { booklets });
-    publish();
-    setFlash(req, 'success', `Page removed. ${PUBLISHED}`);
-  } catch (err) {
-    console.error(err);
-    setFlash(req, 'error', `Could not remove page: ${err.message}`);
-  }
-  res.redirect(303, `/admin/design/${slug}/edit#flipbooks`);
-});
-
-admin.post('/design/:slug/booklets/:index/rename', requireAuth, bookletRenameUpload, async (req, res) => {
-  const { slug, index } = req.params;
-  const idx = Number(index);
-  try {
-    const entry = requireDesignEntry(req, res);
-    if (!entry) return;
-    const booklets = entry.data.booklets || [];
-    const booklet = booklets[idx];
-    if (!booklet) throw new Error('Flipbook not found.');
-
-    const updated = { ...booklet, title: (req.body.title || booklet.title).trim() };
-    const pdfFile = req.files?.bookletPdf?.[0];
-    if (pdfFile) {
-      const publicDir = booklet.pages.length ? siteDirOf(booklet.pages[0]) : `media/design/${slug}/flipbook-${Date.now()}`;
-      updated.pdf = placeUpload(pdfFile, { publicDir, baseName: `source-${Date.now().toString(36)}` });
+  admin.post(`/${key}/:slug/booklets`, requireAuth, bookletCreateUpload, async (req, res) => {
+    const { slug } = req.params;
+    try {
+      const entry = requireEntry(key, req, res);
+      if (!entry) return;
+      const booklet = createBooklet(key, slug, req.files?.newBookletPages, req.files?.newBookletPdf?.[0], req.body.title);
+      const booklets = [...(entry.data.booklets || []), booklet];
+      updateEntry(key, slug, {}, { booklets });
+      publish();
+      setFlash(req, 'success', `Flipbook added. ${PUBLISHED}`);
+    } catch (err) {
+      console.error(err);
+      setFlash(req, 'error', `Could not add flipbook: ${err.message}`);
     }
-    booklets[idx] = updated;
-    updateEntry('design', slug, {}, { booklets });
-    if (pdfFile && booklet.pdf && booklet.pdf !== updated.pdf && !isUsedAnywhere(booklet.pdf)) deleteMediaFile(booklet.pdf);
-    publish();
-    setFlash(req, 'success', `Saved. ${PUBLISHED}`);
-  } catch (err) {
-    console.error(err);
-    setFlash(req, 'error', `Could not save: ${err.message}`);
-  }
-  res.redirect(303, `/admin/design/${slug}/edit#flipbooks`);
-});
+    res.redirect(303, `/admin/${key}/${slug}/edit#flipbooks`);
+  });
 
-admin.post('/design/:slug/booklets/:index/delete', requireAuth, async (req, res) => {
-  const { slug, index } = req.params;
-  const idx = Number(index);
-  try {
-    const entry = requireDesignEntry(req, res);
-    if (!entry) return;
-    const booklets = entry.data.booklets || [];
-    const booklet = booklets[idx];
-    if (!booklet) throw new Error('Flipbook not found.');
+  admin.post(`/${key}/:slug/booklets/:index/pages`, requireAuth, bookletPagesUpload, async (req, res) => {
+    const { slug, index } = req.params;
+    const idx = Number(index);
+    try {
+      const entry = requireEntry(key, req, res);
+      if (!entry) return;
+      const booklets = entry.data.booklets || [];
+      const booklet = booklets[idx];
+      if (!booklet) throw new Error('Flipbook not found.');
+      const newFiles = req.files?.morePages || [];
+      if (newFiles.length === 0) throw new Error('Choose at least one page image.');
 
-    if (booklet.pages[0]) deleteMediaFileDir(booklet.pages[0]);
-    booklets.splice(idx, 1);
-    updateEntry('design', slug, {}, { booklets });
-    publish();
-    setFlash(req, 'success', `Flipbook deleted. ${PUBLISHED}`);
-  } catch (err) {
-    console.error(err);
-    setFlash(req, 'error', `Could not delete: ${err.message}`);
-  }
-  res.redirect(303, `/admin/design/${slug}/edit#flipbooks`);
-});
-
-admin.post('/design/:slug/trifolds', requireAuth, trifoldUpload, async (req, res) => {
-  const { slug } = req.params;
-  try {
-    const entry = requireDesignEntry(req, res);
-    if (!entry) return;
-    const outsideFile = req.files?.outside?.[0];
-    const insideFile = req.files?.inside?.[0];
-    if (!outsideFile || !insideFile) throw new Error('Both outside and inside images are required.');
-
-    const publicDir = `media/design/${slug}/trifold-${Date.now()}`;
-    const trifold = {
-      title: (req.body.title || 'Untitled trifold').trim(),
-      outside: placeUpload(outsideFile, { publicDir, baseName: 'outside' }),
-      inside: placeUpload(insideFile, { publicDir, baseName: 'inside' }),
-    };
-    const trifolds = [...(entry.data.trifolds || []), trifold];
-    updateEntry('design', slug, {}, { trifolds });
-    publish();
-    setFlash(req, 'success', `Trifold added. ${PUBLISHED}`);
-  } catch (err) {
-    console.error(err);
-    setFlash(req, 'error', `Could not add trifold: ${err.message}`);
-  }
-  res.redirect(303, `/admin/design/${slug}/edit#trifolds`);
-});
-
-admin.post('/design/:slug/trifolds/:index', requireAuth, trifoldUpload, async (req, res) => {
-  const { slug, index } = req.params;
-  const idx = Number(index);
-  try {
-    const entry = requireDesignEntry(req, res);
-    if (!entry) return;
-    const trifolds = entry.data.trifolds || [];
-    const trifold = trifolds[idx];
-    if (!trifold) throw new Error('Trifold not found.');
-
-    const publicDir = siteDirOf(trifold.outside);
-    const updated = { ...trifold, title: (req.body.title || trifold.title).trim() };
-    const outsideFile = req.files?.outside?.[0];
-    const insideFile = req.files?.inside?.[0];
-    const stamp = Date.now().toString(36);
-    if (outsideFile) updated.outside = placeUpload(outsideFile, { publicDir, baseName: `outside-${stamp}` });
-    if (insideFile) updated.inside = placeUpload(insideFile, { publicDir, baseName: `inside-${stamp}` });
-
-    trifolds[idx] = updated;
-    updateEntry('design', slug, {}, { trifolds });
-    // the replaced sides, now that the entry no longer points at them
-    for (const side of ['outside', 'inside']) {
-      if (updated[side] !== trifold[side] && !isUsedAnywhere(trifold[side])) deleteMediaFile(trifold[side]);
+      const publicDir = booklet.pages.length ? siteDirOf(booklet.pages[0]) : `media/${key}/${slug}/flipbook-${Date.now()}`;
+      const added = placeMultiple(newFiles, { publicDir, prefix: 'page' });
+      booklets[idx] = { ...booklet, pages: [...booklet.pages, ...added] };
+      updateEntry(key, slug, {}, { booklets });
+      publish();
+      setFlash(req, 'success', `Pages added. ${PUBLISHED}`);
+    } catch (err) {
+      console.error(err);
+      setFlash(req, 'error', `Could not add pages: ${err.message}`);
     }
-    publish();
-    setFlash(req, 'success', `Saved. ${PUBLISHED}`);
-  } catch (err) {
-    console.error(err);
-    setFlash(req, 'error', `Could not save: ${err.message}`);
-  }
-  res.redirect(303, `/admin/design/${slug}/edit#trifolds`);
-});
+    res.redirect(303, `/admin/${key}/${slug}/edit#flipbooks`);
+  });
 
-admin.post('/design/:slug/trifolds/:index/delete', requireAuth, async (req, res) => {
-  const { slug, index } = req.params;
-  const idx = Number(index);
-  try {
-    const entry = requireDesignEntry(req, res);
-    if (!entry) return;
-    const trifolds = entry.data.trifolds || [];
-    const trifold = trifolds[idx];
-    if (!trifold) throw new Error('Trifold not found.');
+  admin.post(`/${key}/:slug/booklets/:index/reorder-pages`, requireAuth, async (req, res) => {
+    const { slug, index } = req.params;
+    const idx = Number(index);
+    const entry = getEntry(key, slug);
+    const booklets = entry?.data.booklets || [];
+    const booklet = booklets[idx];
+    const incoming = req.body.pages;
+    const validSet = Array.isArray(incoming) && new Set(incoming).size === incoming.length && incoming.every((p) => booklet?.pages.includes(p));
 
-    deleteMediaFileDir(trifold.outside);
-    trifolds.splice(idx, 1);
-    updateEntry('design', slug, {}, { trifolds });
+    if (!entry || !booklet || !validSet || incoming.length !== booklet.pages.length) {
+      return res.status(400).json({ ok: false });
+    }
+
+    booklets[idx] = { ...booklet, pages: incoming };
+    updateEntry(key, slug, {}, { booklets });
     publish();
-    setFlash(req, 'success', `Trifold deleted. ${PUBLISHED}`);
-  } catch (err) {
-    console.error(err);
-    setFlash(req, 'error', `Could not delete: ${err.message}`);
-  }
-  res.redirect(303, `/admin/design/${slug}/edit#trifolds`);
-});
+    res.json({ ok: true });
+  });
+
+  admin.post(`/${key}/:slug/booklets/:index/delete-page`, requireAuth, async (req, res) => {
+    const { slug, index } = req.params;
+    const idx = Number(index);
+    try {
+      const entry = requireEntry(key, req, res);
+      if (!entry) return;
+      const booklets = entry.data.booklets || [];
+      const booklet = booklets[idx];
+      if (!booklet) throw new Error('Flipbook not found.');
+
+      const page = req.body.page;
+      deleteMediaFile(page);
+      booklets[idx] = { ...booklet, pages: booklet.pages.filter((p) => p !== page) };
+      updateEntry(key, slug, {}, { booklets });
+      publish();
+      setFlash(req, 'success', `Page removed. ${PUBLISHED}`);
+    } catch (err) {
+      console.error(err);
+      setFlash(req, 'error', `Could not remove page: ${err.message}`);
+    }
+    res.redirect(303, `/admin/${key}/${slug}/edit#flipbooks`);
+  });
+
+  admin.post(`/${key}/:slug/booklets/:index/rename`, requireAuth, bookletRenameUpload, async (req, res) => {
+    const { slug, index } = req.params;
+    const idx = Number(index);
+    try {
+      const entry = requireEntry(key, req, res);
+      if (!entry) return;
+      const booklets = entry.data.booklets || [];
+      const booklet = booklets[idx];
+      if (!booklet) throw new Error('Flipbook not found.');
+
+      const updated = { ...booklet, title: (req.body.title || booklet.title).trim() };
+      const pdfFile = req.files?.bookletPdf?.[0];
+      if (pdfFile) {
+        const publicDir = booklet.pages.length ? siteDirOf(booklet.pages[0]) : `media/${key}/${slug}/flipbook-${Date.now()}`;
+        updated.pdf = placeUpload(pdfFile, { publicDir, baseName: `source-${Date.now().toString(36)}` });
+      }
+      booklets[idx] = updated;
+      updateEntry(key, slug, {}, { booklets });
+      if (pdfFile && booklet.pdf && booklet.pdf !== updated.pdf && !isUsedAnywhere(booklet.pdf)) deleteMediaFile(booklet.pdf);
+      publish();
+      setFlash(req, 'success', `Saved. ${PUBLISHED}`);
+    } catch (err) {
+      console.error(err);
+      setFlash(req, 'error', `Could not save: ${err.message}`);
+    }
+    res.redirect(303, `/admin/${key}/${slug}/edit#flipbooks`);
+  });
+
+  admin.post(`/${key}/:slug/booklets/:index/delete`, requireAuth, async (req, res) => {
+    const { slug, index } = req.params;
+    const idx = Number(index);
+    try {
+      const entry = requireEntry(key, req, res);
+      if (!entry) return;
+      const booklets = entry.data.booklets || [];
+      const booklet = booklets[idx];
+      if (!booklet) throw new Error('Flipbook not found.');
+
+      if (booklet.pages[0]) deleteMediaFileDir(booklet.pages[0]);
+      booklets.splice(idx, 1);
+      updateEntry(key, slug, {}, { booklets });
+      publish();
+      setFlash(req, 'success', `Flipbook deleted. ${PUBLISHED}`);
+    } catch (err) {
+      console.error(err);
+      setFlash(req, 'error', `Could not delete: ${err.message}`);
+    }
+    res.redirect(303, `/admin/${key}/${slug}/edit#flipbooks`);
+  });
+
+  admin.post(`/${key}/:slug/trifolds`, requireAuth, trifoldUpload, async (req, res) => {
+    const { slug } = req.params;
+    try {
+      const entry = requireEntry(key, req, res);
+      if (!entry) return;
+      const trifold = createTrifold(key, slug, req.files?.outside?.[0], req.files?.inside?.[0], req.body.title);
+      const trifolds = [...(entry.data.trifolds || []), trifold];
+      updateEntry(key, slug, {}, { trifolds });
+      publish();
+      setFlash(req, 'success', `Trifold added. ${PUBLISHED}`);
+    } catch (err) {
+      console.error(err);
+      setFlash(req, 'error', `Could not add trifold: ${err.message}`);
+    }
+    res.redirect(303, `/admin/${key}/${slug}/edit#trifolds`);
+  });
+
+  admin.post(`/${key}/:slug/trifolds/:index`, requireAuth, trifoldUpload, async (req, res) => {
+    const { slug, index } = req.params;
+    const idx = Number(index);
+    try {
+      const entry = requireEntry(key, req, res);
+      if (!entry) return;
+      const trifolds = entry.data.trifolds || [];
+      const trifold = trifolds[idx];
+      if (!trifold) throw new Error('Trifold not found.');
+
+      const publicDir = siteDirOf(trifold.outside);
+      const updated = { ...trifold, title: (req.body.title || trifold.title).trim() };
+      const outsideFile = req.files?.outside?.[0];
+      const insideFile = req.files?.inside?.[0];
+      const stamp = Date.now().toString(36);
+      if (outsideFile) updated.outside = placeUpload(outsideFile, { publicDir, baseName: `outside-${stamp}` });
+      if (insideFile) updated.inside = placeUpload(insideFile, { publicDir, baseName: `inside-${stamp}` });
+
+      trifolds[idx] = updated;
+      updateEntry(key, slug, {}, { trifolds });
+      // the replaced sides, now that the entry no longer points at them
+      for (const side of ['outside', 'inside']) {
+        if (updated[side] !== trifold[side] && !isUsedAnywhere(trifold[side])) deleteMediaFile(trifold[side]);
+      }
+      publish();
+      setFlash(req, 'success', `Saved. ${PUBLISHED}`);
+    } catch (err) {
+      console.error(err);
+      setFlash(req, 'error', `Could not save: ${err.message}`);
+    }
+    res.redirect(303, `/admin/${key}/${slug}/edit#trifolds`);
+  });
+
+  admin.post(`/${key}/:slug/trifolds/:index/delete`, requireAuth, async (req, res) => {
+    const { slug, index } = req.params;
+    const idx = Number(index);
+    try {
+      const entry = requireEntry(key, req, res);
+      if (!entry) return;
+      const trifolds = entry.data.trifolds || [];
+      const trifold = trifolds[idx];
+      if (!trifold) throw new Error('Trifold not found.');
+
+      deleteMediaFileDir(trifold.outside);
+      trifolds.splice(idx, 1);
+      updateEntry(key, slug, {}, { trifolds });
+      publish();
+      setFlash(req, 'success', `Trifold deleted. ${PUBLISHED}`);
+    } catch (err) {
+      console.error(err);
+      setFlash(req, 'error', `Could not delete: ${err.message}`);
+    }
+    res.redirect(303, `/admin/${key}/${slug}/edit#trifolds`);
+  });
+}
 
 // Catches anything thrown above (most notably a multer/fileFilter upload
 // rejection, which happens before any route handler's own try/catch runs)
