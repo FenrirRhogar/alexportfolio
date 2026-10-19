@@ -51,6 +51,28 @@ const pageData = pages.map(withBase);
   :global(.flipbook .stf__parent) {
     margin: 0 auto;
   }
+  /* while the book is closed (front or back cover showing alone), slide it
+     so that one page sits in the middle, like a real closed book */
+  :global(.flipbook) {
+    transition: transform 0.6s cubic-bezier(0.65, 0, 0.35, 1);
+  }
+  :global(.flipbook[data-closed='front']) {
+    transform: translateX(-25%);
+  }
+  :global(.flipbook[data-closed='back']) {
+    transform: translateX(25%);
+  }
+  :global(.flip-page) {
+    background: var(--color-paper-dim);
+  }
+  :global(.flip-page img) {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    user-select: none;
+    pointer-events: none;
+  }
 </style>
 
 <script>
@@ -66,10 +88,25 @@ const pageData = pages.map(withBase);
         const wrap = el.closest('[data-flipbook-wrap]');
         if (!wrap || pages.length === 0) return;
 
-        // showCover:false pairs page 1 with page 2 immediately, like every
-        // other spread — showCover:true isolates it as a lone cover with
-        // nothing to face, which the library renders as a blank page
-        // beside it (its canvas is unconditionally cleared to white).
+        // Pages are real <img> elements (the library's HTML mode) rather than
+        // canvas drawings: in canvas mode a lone cover gets a white blank
+        // painted beside it, so the cover had to be switched off — which
+        // put page 1 next to page 2 and every spread off by one. Here the
+        // empty half stays transparent, so the first page is a proper cover
+        // and the spreads are 2–3, 4–5… like a printed book.
+        for (const [i, src] of pages.entries()) {
+          const page = document.createElement('div');
+          page.className = 'flip-page';
+          // the covers are stiff, the inside pages bend
+          if (i === 0 || i === pages.length - 1) page.dataset.density = 'hard';
+          const img = document.createElement('img');
+          img.src = src;
+          img.alt = `${el.getAttribute('aria-label')?.split(' — ')[0] ?? ''} — page ${i + 1}`;
+          img.loading = i < 4 ? 'eager' : 'lazy';
+          page.appendChild(img);
+          el.appendChild(page);
+        }
+
         const pageFlip = new PageFlip(el, {
           width: Number(el.dataset.width),
           height: Number(el.dataset.height),
@@ -79,19 +116,30 @@ const pageData = pages.map(withBase);
           minHeight: 200,
           maxHeight: 1400,
           maxShadowOpacity: 0.5,
-          showCover: false,
+          showCover: true,
           mobileScrollSupport: true,
         });
 
-        pageFlip.loadFromImages(pages);
+        pageFlip.loadFromHTML(el.querySelectorAll<HTMLElement>('.flip-page'));
 
         const counter = wrap.querySelector<HTMLElement>('[data-flip-counter]');
         const prevBtn = wrap.querySelector<HTMLButtonElement>('[data-flip-prev]');
         const nextBtn = wrap.querySelector<HTMLButtonElement>('[data-flip-next]');
 
         const updateCounter = () => {
-          if (counter) counter.textContent = `${pageFlip.getCurrentPageIndex() + 1} / ${pages.length}`;
+          const i = pageFlip.getCurrentPageIndex();
+          const twoUp = pageFlip.getOrientation() === 'landscape';
+          // the front cover shows alone; so does the back one when the page
+          // count is even (it has no facing page left)
+          const closed = !twoUp ? '' : i === 0 ? 'front' : i === pages.length - 1 && pages.length % 2 === 0 ? 'back' : '';
+          if (closed) el.dataset.closed = closed;
+          else delete el.dataset.closed;
+          if (counter) {
+            const shown = twoUp && !closed && i + 1 < pages.length ? `${i + 1}–${i + 2}` : `${i + 1}`;
+            counter.textContent = `${shown} / ${pages.length}`;
+          }
         };
+        pageFlip.on('changeOrientation', updateCounter);
         pageFlip.on('flip', updateCounter);
         updateCounter();
 
