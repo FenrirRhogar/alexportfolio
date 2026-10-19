@@ -373,9 +373,12 @@ admin.post('/site', requireAuth, siteUpload, async (req, res) => {
     }
 
     const photoFile = req.files?.aboutPhoto?.[0];
-    if (photoFile) fields.aboutPhoto = placeUpload(photoFile, { publicDir: 'media', baseName: 'about-photo' });
+    const oldPhoto = existing?.data.aboutPhoto;
+    if (photoFile) fields.aboutPhoto = placeUpload(photoFile, { publicDir: 'media', baseName: `about-photo-${Date.now().toString(36)}` });
 
     upsertEntry('site', 'global', fields);
+    // the replaced photo, if this page uploaded it and nothing else uses it
+    if (photoFile && oldPhoto?.startsWith('/media/about-photo') && !isUsedAnywhere(oldPhoto)) deleteMediaFile(oldPhoto);
     publish();
     setFlash(req, 'success', `Saved. ${PUBLISHED}`);
   } catch (err) {
@@ -425,6 +428,10 @@ function uploadFieldsFor(schema) {
  * new file this submission — existing values are left untouched by the
  * caller (content.mjs merges on top of the existing entry). */
 function placeSingleUploads(schema, files, slug) {
+  // a fresh name on every upload: browsers and Cloudflare keep /media files
+  // for hours, so a replaced image reusing the old name could keep showing
+  // the old picture (cleanupDropped removes the file it replaced)
+  const stamp = Date.now().toString(36);
   const result = {};
   const singles = [schema.image, schema.poster, schema.video, schema.videoWebm].filter(Boolean);
   for (const f of singles) {
@@ -434,12 +441,12 @@ function placeSingleUploads(schema, files, slug) {
     if (schema.key === 'design') {
       result[f.name] = placeUpload(file, {
         publicDir: `media/design/${slug}`,
-        baseName: f.name === schema.image.name ? 'cover' : f.name,
+        baseName: `${f.name === schema.image.name ? 'cover' : f.name}-${stamp}`,
       });
     } else {
       result[f.name] = placeUpload(file, {
         publicDir: `media/${schema.key}`,
-        baseName: f.name === 'poster' ? `${slug}-poster` : f.name === 'video' ? `${slug}-video` : f.name === 'videoWebm' ? `${slug}-webm` : `${slug}`,
+        baseName: `${f.name === 'poster' ? `${slug}-poster` : f.name === 'video' ? `${slug}-video` : f.name === 'videoWebm' ? `${slug}-webm` : slug}-${stamp}`,
       });
     }
   }
@@ -604,8 +611,11 @@ for (const key of Object.keys(COLLECTIONS)) {
 
   admin.post(`/${key}/:slug/delete`, requireAuth, async (req, res) => {
     const { slug } = req.params;
+    const entry = getEntry(key, slug);
     deleteEntry(key, slug);
     deleteEntryMedia(key, slug);
+    // files this entry uploaded under its own name and nothing else uses
+    if (entry) cleanupDropped(key, slug, schema, entry.data, {});
     publish();
     setFlash(req, 'success', `Deleted. ${PUBLISHED}`);
     res.redirect(303, `/admin/${key}`);
@@ -744,10 +754,11 @@ admin.post('/design/:slug/booklets/:index/rename', requireAuth, bookletRenameUpl
     const pdfFile = req.files?.bookletPdf?.[0];
     if (pdfFile) {
       const publicDir = booklet.pages.length ? siteDirOf(booklet.pages[0]) : `media/design/${slug}/flipbook-${Date.now()}`;
-      updated.pdf = placeUpload(pdfFile, { publicDir, baseName: 'source' });
+      updated.pdf = placeUpload(pdfFile, { publicDir, baseName: `source-${Date.now().toString(36)}` });
     }
     booklets[idx] = updated;
     updateEntry('design', slug, {}, { booklets });
+    if (pdfFile && booklet.pdf && booklet.pdf !== updated.pdf && !isUsedAnywhere(booklet.pdf)) deleteMediaFile(booklet.pdf);
     publish();
     setFlash(req, 'success', `Saved. ${PUBLISHED}`);
   } catch (err) {
@@ -819,11 +830,16 @@ admin.post('/design/:slug/trifolds/:index', requireAuth, trifoldUpload, async (r
     const updated = { ...trifold, title: (req.body.title || trifold.title).trim() };
     const outsideFile = req.files?.outside?.[0];
     const insideFile = req.files?.inside?.[0];
-    if (outsideFile) updated.outside = placeUpload(outsideFile, { publicDir, baseName: 'outside' });
-    if (insideFile) updated.inside = placeUpload(insideFile, { publicDir, baseName: 'inside' });
+    const stamp = Date.now().toString(36);
+    if (outsideFile) updated.outside = placeUpload(outsideFile, { publicDir, baseName: `outside-${stamp}` });
+    if (insideFile) updated.inside = placeUpload(insideFile, { publicDir, baseName: `inside-${stamp}` });
 
     trifolds[idx] = updated;
     updateEntry('design', slug, {}, { trifolds });
+    // the replaced sides, now that the entry no longer points at them
+    for (const side of ['outside', 'inside']) {
+      if (updated[side] !== trifold[side] && !isUsedAnywhere(trifold[side])) deleteMediaFile(trifold[side]);
+    }
     publish();
     setFlash(req, 'success', `Saved. ${PUBLISHED}`);
   } catch (err) {
@@ -884,7 +900,9 @@ app.use(
 // a file uploaded moments ago isn't in dist/ until the rebuild finishes —
 // serve it straight from public/media meanwhile, so it never shows as broken
 app.use('/media', express.static(join(process.env.SITE_REPO_PATH, 'public', 'media')));
-app.use((req, res) => res.status(404).type('text').send('Not found'));
+// never let a browser or Cloudflare remember a "not found" — the file may
+// exist a moment later (e.g. right after an upload)
+app.use((req, res) => res.status(404).set('Cache-Control', 'no-store').type('text').send('Not found'));
 
 // build once at startup so dist/ always matches the content on disk
 requestBuild();
