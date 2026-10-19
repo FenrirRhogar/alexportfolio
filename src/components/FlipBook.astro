@@ -1,5 +1,6 @@
 ---
 import { withBase } from '../lib/url';
+import { sizeStyle } from '../lib/sizes';
 
 interface Props {
   id: string;
@@ -7,14 +8,16 @@ interface Props {
   pages: string[];
   width: number;
   height: number;
+  /** a display size from src/lib/sizes.ts */
+  size?: string;
   class?: string;
 }
 
-const { id, title, pages, width, height, class: className = '' } = Astro.props;
+const { id, title, pages, width, height, size, class: className = '' } = Astro.props;
 const pageData = pages.map(withBase);
 ---
 
-<div class:list={['flipbook-wrap mx-auto', className]} data-flipbook-wrap>
+<div class:list={['flipbook-wrap mx-auto', className]} style={sizeStyle(size, '46rem')} data-flipbook-wrap>
   <div
     id={id}
     class="flipbook mx-auto"
@@ -38,9 +41,6 @@ const pageData = pages.map(withBase);
 </div>
 
 <style>
-  .flipbook-wrap {
-    max-width: 46rem;
-  }
   /* :global() — the PageFlip library takes ownership of this element's
      internals and it ends up without Astro's scope attribute, so a
      scoped selector here would never match it. */

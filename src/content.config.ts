@@ -11,6 +11,7 @@ const booklets = z
       width: z.number(),
       height: z.number(),
       pages: z.array(z.string()),
+      size: z.string().optional(),
     }),
   )
   .default([]);
@@ -24,6 +25,7 @@ const trifolds = z
       title: z.string(),
       outside: z.string(),
       inside: z.string(),
+      size: z.string().optional(),
     }),
   )
   .default([]);
@@ -40,6 +42,10 @@ const design = defineCollection({
     gallery: z.array(z.string()).default([]),
     booklets,
     trifolds,
+    // display sizes, see src/lib/sizes.ts
+    imageSize: z.string().optional(),
+    gallerySize: z.string().optional(),
+    galleryColumns: z.string().optional(),
     tags: z.array(z.string()).default([]),
     featured: z.boolean().default(false),
     order: z.number().default(0),
@@ -75,6 +81,10 @@ const fineart = defineCollection({
     gallery: z.array(z.string()).default([]),
     booklets,
     trifolds,
+    // display sizes, see src/lib/sizes.ts
+    imageSize: z.string().optional(),
+    gallerySize: z.string().optional(),
+    galleryColumns: z.string().optional(),
     featured: z.boolean().default(false),
     order: z.number().default(0),
   }),

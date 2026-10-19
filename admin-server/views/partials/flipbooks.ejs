@@ -10,6 +10,11 @@
           <div class="media-card-head">
             <form method="post" action="/admin/<%= schema.key %>/<%= entry.slug %>/booklets/<%= i %>/rename" enctype="multipart/form-data" class="inline-form">
               <input type="text" name="title" value="<%= b.title %>" class="title-input" />
+              <select name="size" class="size-select" title="How big this flipbook is on the page">
+                <% sizeOptions.forEach((o) => { %>
+                  <option value="<%= o.value %>" <%= (b.size || '') === o.value ? 'selected' : '' %>>Size: <%= o.label %></option>
+                <% }) %>
+              </select>
               <label class="file-chip">
                 <input type="file" name="bookletPdf" accept="application/pdf" />
                 📎 Replace PDF
@@ -79,6 +84,14 @@
             <label class="field">
               <span>Title</span>
               <input type="text" name="title" value="<%= t.title %>" />
+            </label>
+            <label class="field">
+              <span>Size on the page</span>
+              <select name="size">
+                <% sizeOptions.forEach((o) => { %>
+                  <option value="<%= o.value %>" <%= (t.size || '') === o.value ? 'selected' : '' %>><%= o.label %></option>
+                <% }) %>
+              </select>
             </label>
             <div class="trifold-grid">
               <label class="field">

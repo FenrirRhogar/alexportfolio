@@ -8,7 +8,8 @@
   <% } else if (f.type === 'select') { %>
     <select name="<%= f.name %>">
       <% f.options.forEach((opt) => { %>
-        <option value="<%= opt %>" <%= value === opt ? 'selected' : '' %>><%= opt || '—' %></option>
+        <% const v = typeof opt === 'object' ? opt.value : opt; %>
+        <option value="<%= v %>" <%= (value ?? '') === v ? 'selected' : '' %>><%= typeof opt === 'object' ? opt.label : (opt || '—') %></option>
       <% }) %>
     </select>
   <% } else if (f.type === 'color') { %>

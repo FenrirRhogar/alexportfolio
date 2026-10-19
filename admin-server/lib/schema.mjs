@@ -1,6 +1,30 @@
 // Plain-JS mirror of src/content.config.ts, used to drive the generic
 // list/add/edit forms. Keep in sync by hand if the real schema changes —
 // this app is plain Node and can't import the Astro/Zod config directly.
+// Display sizes for a project's images and its flipbooks/trifolds — the
+// values src/lib/sizes.ts understands. '' keeps the page's standard width.
+export const SIZE_OPTIONS = [
+  { value: '', label: 'Standard' },
+  { value: 'small', label: 'Small' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'large', label: 'Large' },
+  { value: 'xlarge', label: 'Extra large' },
+  { value: 'full', label: 'Full width' },
+];
+
+const COLUMN_OPTIONS = [
+  { value: '', label: 'Standard (2)' },
+  { value: '1', label: '1 — one image per row' },
+  { value: '2', label: '2' },
+  { value: '3', label: '3' },
+];
+
+const sizeFields = (imageLabel) => [
+  { name: 'imageSize', label: imageLabel, type: 'select', options: SIZE_OPTIONS },
+  { name: 'gallerySize', label: 'Gallery width on the page', type: 'select', options: SIZE_OPTIONS },
+  { name: 'galleryColumns', label: 'Gallery columns', type: 'select', options: COLUMN_OPTIONS },
+];
+
 export const COLLECTIONS = {
   design: {
     key: 'design',
@@ -16,6 +40,7 @@ export const COLLECTIONS = {
       { name: 'summary', label: 'Summary', type: 'textarea', required: true },
       { name: 'tags', label: 'Tags', type: 'tags', placeholder: 'comma, separated, tags' },
       { name: 'featured', label: 'Feature on homepage', type: 'checkbox' },
+      ...sizeFields('Cover image size on the project page'),
     ],
     image: { name: 'cover', label: 'Cover image', kind: 'image' },
     gallery: { name: 'gallery', label: 'Gallery images', kind: 'image' },
@@ -62,6 +87,7 @@ export const COLLECTIONS = {
       },
       { name: 'summary', label: 'Summary', type: 'textarea' },
       { name: 'featured', label: 'Feature on homepage', type: 'checkbox' },
+      ...sizeFields('Main image size on the artwork page'),
     ],
     image: { name: 'image', label: 'Image', kind: 'image' },
     gallery: { name: 'gallery', label: 'Gallery images', kind: 'image' },

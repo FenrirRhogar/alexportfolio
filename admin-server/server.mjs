@@ -8,7 +8,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { COLLECTIONS, getCollection, SITE_SECTIONS } from './lib/schema.mjs';
+import { COLLECTIONS, getCollection, SITE_SECTIONS, SIZE_OPTIONS } from './lib/schema.mjs';
 import { listEntries, getEntry, createEntry, updateEntry, upsertEntry, deleteEntry, reorderEntries, SITE_REPO } from './lib/content.mjs';
 import { readFrontmatter } from './lib/frontmatter.mjs';
 import {
@@ -166,6 +166,7 @@ function homepageSelection() {
 admin.use((req, res, next) => {
   res.locals.build = buildStatus();
   res.locals.accessEmail = req.accessEmail;
+  res.locals.sizeOptions = SIZE_OPTIONS;
   next();
 });
 
@@ -432,7 +433,9 @@ function coerceFields(schema, body) {
         .map((t) => t.trim())
         .filter(Boolean);
     } else {
-      const val = plain(body[f.name]);
+      let val = plain(body[f.name]);
+      // a dropdown only ever stores one of its own options
+      if (f.type === 'select' && !f.options.some((o) => (typeof o === 'object' ? o.value : o) === val)) val = '';
       // every text/select field is always present in the submitted body
       // (the form never hides a field), so an empty value here means the
       // user genuinely cleared it — write that through rather than
@@ -744,6 +747,14 @@ function createBooklet(key, slug, pageFiles = [], pdfFile, title, picked = []) {
   return booklet;
 }
 
+/** Sets a flipbook/trifold's display size from the form — only known sizes;
+ * "Standard" removes the setting. Leaves it alone if the form sent none. */
+function withSize(item, size) {
+  if (size === undefined) return item;
+  const { size: _old, ...rest } = item;
+  return size && SIZE_OPTIONS.some((o) => o.value === size) ? { ...rest, size } : rest;
+}
+
 /** A trifold: one sheet's outside and inside, in its own folder. */
 function createTrifold(key, slug, outsideFile, insideFile, title) {
   if (!outsideFile || !insideFile) throw new Error('Both outside and inside images are required.');
@@ -854,7 +865,7 @@ for (const key of Object.keys(COLLECTIONS).filter((k) => COLLECTIONS[k].hasFlipb
       const booklet = booklets[idx];
       if (!booklet) throw new Error('Flipbook not found.');
 
-      const updated = { ...booklet, title: (req.body.title || booklet.title).trim() };
+      const updated = withSize({ ...booklet, title: (req.body.title || booklet.title).trim() }, req.body.size);
       const pdfFile = req.files?.bookletPdf?.[0];
       if (pdfFile) {
         const publicDir = booklet.pages.length ? siteDirOf(booklet.pages[0]) : `media/${key}/${slug}/flipbook-${Date.now()}`;
@@ -922,7 +933,7 @@ for (const key of Object.keys(COLLECTIONS).filter((k) => COLLECTIONS[k].hasFlipb
       if (!trifold) throw new Error('Trifold not found.');
 
       const publicDir = siteDirOf(trifold.outside);
-      const updated = { ...trifold, title: (req.body.title || trifold.title).trim() };
+      const updated = withSize({ ...trifold, title: (req.body.title || trifold.title).trim() }, req.body.size);
       const outsideFile = req.files?.outside?.[0];
       const insideFile = req.files?.inside?.[0];
       const stamp = Date.now().toString(36);

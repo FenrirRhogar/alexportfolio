@@ -1,21 +1,24 @@
 ---
 import { withBase } from '../lib/url';
+import { sizeStyle } from '../lib/sizes';
 
 interface Props {
   title: string;
   outside: string;
   inside: string;
+  /** a display size from src/lib/sizes.ts */
+  size?: string;
   class?: string;
 }
 
-const { title, outside, inside, class: className = '' } = Astro.props;
+const { title, outside, inside, size, class: className = '' } = Astro.props;
 const sides = [
   { label: 'Outside', src: outside },
   { label: 'Inside', src: inside },
 ];
 ---
 
-<div class:list={['trifold-wrap mx-auto space-y-10', className]}>
+<div class:list={['trifold-wrap mx-auto space-y-10', className]} style={sizeStyle(size, '46rem')}>
   {sides.map((side) => (
     <figure>
       <div class="relative overflow-hidden bg-paper-dim">
@@ -34,9 +37,6 @@ const sides = [
 </div>
 
 <style>
-  .trifold-wrap {
-    max-width: 46rem;
-  }
   .fold-line {
     position: absolute;
     top: 0;

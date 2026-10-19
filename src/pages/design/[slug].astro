@@ -4,6 +4,7 @@ import FlipBook from '../../components/FlipBook.astro';
 import TrifoldViewer from '../../components/TrifoldViewer.astro';
 import { getCollection, getEntry, render } from 'astro:content';
 import { withBase } from '../../lib/url';
+import { sizeStyle, galleryColumns } from '../../lib/sizes';
 
 export async function getStaticPaths() {
   const projects = await getCollection('design');
@@ -13,7 +14,7 @@ export async function getStaticPaths() {
 const { entry } = Astro.props;
 const site = (await getEntry('site', 'global')).data;
 const { Content } = await render(entry);
-const { title, client, year, category, cover, gallery, booklets, trifolds, tags } = entry.data;
+const { title, client, year, category, cover, gallery, booklets, trifolds, tags, imageSize, gallerySize } = entry.data;
 const meta = [category, client, year].filter(Boolean).join(' — ');
 ---
 
@@ -33,7 +34,7 @@ const meta = [category, client, year].filter(Boolean).join(' — ');
       )}
     </header>
 
-    <div class="mb-16 max-w-4xl mx-auto">
+    <div class="mb-16 mx-auto" style={sizeStyle(imageSize, '56rem')}>
       <img src={withBase(cover)} alt={title} class="w-full h-auto" />
     </div>
 
@@ -44,7 +45,7 @@ const meta = [category, client, year].filter(Boolean).join(' — ');
     </div>
 
     {gallery.length > 0 && (
-      <div class="mt-20 columns-1 sm:columns-2 gap-8 max-w-4xl mx-auto">
+      <div class:list={['mt-20 gap-8 mx-auto', galleryColumns(entry.data.galleryColumns)]} style={sizeStyle(gallerySize, '56rem')}>
         {gallery.map((img: string) => (
           <img src={withBase(img)} alt="" class="w-full h-auto mb-8 break-inside-avoid" />
         ))}
@@ -62,6 +63,7 @@ const meta = [category, client, year].filter(Boolean).join(' — ');
               pages={b.pages}
               width={b.width}
               height={b.height}
+              size={b.size}
             />
           </div>
         ))}
@@ -73,7 +75,7 @@ const meta = [category, client, year].filter(Boolean).join(' — ');
         {trifolds.map((t) => (
           <div>
             <p class="text-center text-sm uppercase tracking-widest text-ink-soft mb-6">{t.title}</p>
-            <TrifoldViewer title={t.title} outside={t.outside} inside={t.inside} />
+            <TrifoldViewer title={t.title} outside={t.outside} inside={t.inside} size={t.size} />
           </div>
         ))}
       </div>
