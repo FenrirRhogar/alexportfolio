@@ -11,6 +11,7 @@
     <span>Page images, in order</span>
     <input type="file" name="newBookletPages" accept="image/jpeg,image/png,image/webp,image/gif,image/avif" multiple />
   </label>
+  <%- include('library-picker', { files: library.image, name: 'pagePick', multiple: true, ordered: true, current: [], label: '…or choose pages from the media library' }) %>
   <label class="field">
     <span>Source PDF (optional, offered as a download)</span>
     <input type="file" name="newBookletPdf" accept="application/pdf" />

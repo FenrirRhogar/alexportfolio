@@ -126,6 +126,9 @@ export function siteDirOf(sitePath) {
  * it's removed, rather than deleting each file one at a time. */
 export function deleteMediaFileDir(sitePath) {
   const fsDir = dirname(join(SITE_REPO, 'public', sitePath));
+  // only a flipbook/trifold's own folder (".../flipbook-<time>" or
+  // ".../trifold-<time>") — never wherever some library file happens to live
+  if (!/[\\/](flipbook|trifold)-\d+$/.test(fsDir)) return;
   rmSync(fsDir, { recursive: true, force: true });
 }
 

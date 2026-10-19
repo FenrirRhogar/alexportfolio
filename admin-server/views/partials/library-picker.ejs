@@ -3,9 +3,14 @@
 <% const already = [].concat(current || []); %>
 <% const choices = files.filter((m) => !already.includes(m.path)); %>
 <% if (choices.length) { %>
-  <details class="library-picker">
-    <summary><%= multiple ? '…or add images from the media library' : '…or choose one from the media library' %>
+  <% const isOrdered = typeof ordered !== 'undefined' && ordered; %>
+  <details class="library-picker" <%= isOrdered ? 'data-ordered' : '' %>>
+    <summary><%= typeof label !== 'undefined' ? label : multiple ? '…or add images from the media library' : '…or choose one from the media library' %>
       <span class="muted">(<%= choices.length %>)</span></summary>
+    <% if (isOrdered) { %>
+      <p class="hint">Click pages in reading order — the numbers show where each one goes.</p>
+      <input type="hidden" name="<%= name %>Order" value="[]" />
+    <% } %>
     <div class="picker-grid">
       <% if (!multiple) { %>
         <label class="picker-item picker-none">

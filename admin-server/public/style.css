@@ -305,3 +305,11 @@ h1 { font-size: 2rem; margin: 0 0 0.25rem; }
 @keyframes upload-slide { from { margin-left: 0; } to { margin-left: 65%; } }
 .upload-detail { margin: 0.6rem 0 0; font-size: 0.85rem; min-height: 1.2em; }
 .upload-close { margin-top: 0.9rem; }
+.picker-item[data-order]::after {
+  content: attr(data-order);
+  position: absolute; top: 0.3rem; right: 0.3rem; min-width: 1.6rem; height: 1.6rem; padding: 0 0.35rem;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 999px; background: var(--accent); color: #fff; font-weight: 700; font-size: 0.8rem;
+}
+.add-pages-form { flex-wrap: wrap; }
+.add-pages-form .library-picker { flex-basis: 100%; margin: 0.25rem 0 0; }

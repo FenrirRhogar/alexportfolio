@@ -37,8 +37,9 @@
           </ul>
 
           <form method="post" action="/admin/<%= schema.key %>/<%= entry.slug %>/booklets/<%= i %>/pages" enctype="multipart/form-data" class="inline-form add-pages-form">
-            <input type="file" name="morePages" accept="image/jpeg,image/png,image/webp,image/gif,image/avif" multiple required />
+            <input type="file" name="morePages" accept="image/jpeg,image/png,image/webp,image/gif,image/avif" multiple />
             <button type="submit" class="button small">+ Add pages</button>
+            <%- include('library-picker', { files: library.image, name: 'pagePick', multiple: true, ordered: true, current: [], label: '…or add pages from the media library' }) %>
           </form>
         </div>
       <% }) %>
@@ -52,8 +53,9 @@
           </label>
           <label class="field">
             <span>Page images, in order</span>
-            <input type="file" name="newBookletPages" accept="image/jpeg,image/png,image/webp,image/gif,image/avif" multiple required />
+            <input type="file" name="newBookletPages" accept="image/jpeg,image/png,image/webp,image/gif,image/avif" multiple />
           </label>
+          <%- include('library-picker', { files: library.image, name: 'pagePick', multiple: true, ordered: true, current: [], label: '…or choose pages from the media library' }) %>
           <label class="field">
             <span>Source PDF (optional, just a download link alongside the pages)</span>
             <input type="file" name="newBookletPdf" accept="application/pdf" />

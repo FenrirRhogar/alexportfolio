@@ -1,5 +1,6 @@
 import { readdirSync, readFileSync, statSync, existsSync, mkdirSync, copyFileSync, unlinkSync } from 'node:fs';
 import { join, relative, resolve, sep, extname } from 'node:path';
+import { imageSize } from 'image-size';
 import { SITE_REPO } from './content.mjs';
 import { MIME_EXTENSIONS, PDF_MIME } from './upload.mjs';
 
@@ -140,4 +141,24 @@ export function isLibraryFile(sitePath, kind) {
 
 export function isUsedAnywhere(sitePath) {
   return contentFiles().some((d) => d.raw.includes(sitePath));
+}
+
+/** Copies library images into `publicDir` as <prefix>-<time>-<i>.<ext>, in
+ * the order given — e.g. pages chosen for a flipbook. Copies rather than
+ * links, so the flipbook owns its pages (deleting it removes its folder)
+ * and the library keeps its originals. Returns the new site paths. */
+export function copyLibraryFiles(sitePaths, { publicDir, prefix }) {
+  const dir = join(PUBLIC_DIR, publicDir);
+  mkdirSync(dir, { recursive: true });
+  const stamp = Date.now();
+  return sitePaths.map((sitePath, i) => {
+    const name = `${prefix}-${stamp}-lib${i}${extname(sitePath).toLowerCase()}`;
+    copyFileSync(resolveMediaPath(sitePath), join(dir, name));
+    return `/${publicDir}/${name}`;
+  });
+}
+
+export function imageDimensionsOf(sitePath) {
+  const { width, height } = imageSize(readFileSync(resolveMediaPath(sitePath)));
+  return { width, height };
 }

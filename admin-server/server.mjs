@@ -11,7 +11,16 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { COLLECTIONS, getCollection, SITE_SECTIONS } from './lib/schema.mjs';
 import { listEntries, getEntry, createEntry, updateEntry, upsertEntry, deleteEntry, reorderEntries, SITE_REPO } from './lib/content.mjs';
 import { readFrontmatter } from './lib/frontmatter.mjs';
-import { listMedia, listFolders, placeLibraryUploads, deleteLibraryFile, isLibraryFile, isUsedAnywhere } from './lib/media.mjs';
+import {
+  listMedia,
+  listFolders,
+  placeLibraryUploads,
+  deleteLibraryFile,
+  isLibraryFile,
+  isUsedAnywhere,
+  copyLibraryFiles,
+  imageDimensionsOf,
+} from './lib/media.mjs';
 import { clientIp, loginLimiterPerIp, loginLimiterGlobal, requireCloudflareAccess } from './lib/auth.mjs';
 import {
   upload,
@@ -577,10 +586,13 @@ for (const key of Object.keys(COLLECTIONS)) {
       if (schema.gallery) mediaPaths.gallery = placeGalleryUploads(schema, req.files, slug, pickedGallery(schema, req.body));
       if (schema.hasFlipbooks) {
         const bookletPages = req.files?.newBookletPages || [];
+        const bookletPicks = pickedPages(req.body);
         const outside = req.files?.outside?.[0];
         const inside = req.files?.inside?.[0];
-        if (bookletPages.length) {
-          mediaPaths.booklets = [createBooklet(key, slug, bookletPages, req.files?.newBookletPdf?.[0], req.body.newBookletTitle)];
+        if (bookletPages.length || bookletPicks.length) {
+          mediaPaths.booklets = [
+            createBooklet(key, slug, bookletPages, req.files?.newBookletPdf?.[0], req.body.newBookletTitle, bookletPicks),
+          ];
         }
         if (outside || inside) mediaPaths.trifolds = [createTrifold(key, slug, outside, inside, req.body.newTrifoldTitle)];
       }
@@ -669,18 +681,42 @@ function requireEntry(key, req, res) {
   return entry;
 }
 
-/** Builds a flipbook from uploaded page images (in order) plus an optional
- * source PDF, stored in its own folder under the entry's media folder. */
-function createBooklet(key, slug, pageFiles = [], pdfFile, title) {
-  if (!pageFiles.length) throw new Error('Choose at least one page image.');
+/** Flipbook pages chosen from the media library, in the order they were
+ * clicked (upload.js/picker.js keep that in "<name>Order"), library images only. */
+function pickedPages(body, name = 'pagePick') {
+  const chosen = [].concat(body[name] || []);
+  let order = [];
+  try {
+    order = JSON.parse(body[`${name}Order`] || '[]');
+  } catch {
+    // no click order sent — fall back to the order on the page
+  }
+  const ordered = [...order.filter((p) => chosen.includes(p)), ...chosen.filter((p) => !order.includes(p))];
+  return [...new Set(ordered)].filter((p) => isLibraryFile(p, 'image'));
+}
+
+/** Adds pages to a flipbook folder: uploaded images first (in the order
+ * selected), then library images (in the order clicked), copied in. */
+function placePages(publicDir, pageFiles = [], picked = []) {
+  return [
+    ...placeMultiple(pageFiles, { publicDir, prefix: 'page' }),
+    ...copyLibraryFiles(picked, { publicDir, prefix: 'page' }),
+  ];
+}
+
+/** Builds a flipbook from page images (uploaded and/or chosen from the
+ * media library) plus an optional source PDF, in its own folder under the
+ * entry's media folder. */
+function createBooklet(key, slug, pageFiles = [], pdfFile, title, picked = []) {
+  if (!pageFiles.length && !picked.length) throw new Error('Choose at least one page image.');
   // every page is shown at the first page's proportions
-  const { width, height } = readImageDimensions(pageFiles[0]);
+  const { width, height } = pageFiles.length ? readImageDimensions(pageFiles[0]) : imageDimensionsOf(picked[0]);
   const publicDir = `media/${key}/${slug}/flipbook-${Date.now()}`;
   const booklet = {
     title: (title || 'Untitled flipbook').trim(),
     width,
     height,
-    pages: placeMultiple(pageFiles, { publicDir, prefix: 'page' }),
+    pages: placePages(publicDir, pageFiles, picked),
   };
   if (pdfFile) booklet.pdf = placeUpload(pdfFile, { publicDir, baseName: 'source' });
   return booklet;
@@ -706,7 +742,7 @@ for (const key of Object.keys(COLLECTIONS).filter((k) => COLLECTIONS[k].hasFlipb
     try {
       const entry = requireEntry(key, req, res);
       if (!entry) return;
-      const booklet = createBooklet(key, slug, req.files?.newBookletPages, req.files?.newBookletPdf?.[0], req.body.title);
+      const booklet = createBooklet(key, slug, req.files?.newBookletPages, req.files?.newBookletPdf?.[0], req.body.title, pickedPages(req.body));
       const booklets = [...(entry.data.booklets || []), booklet];
       updateEntry(key, slug, {}, { booklets });
       publish();
@@ -728,10 +764,11 @@ for (const key of Object.keys(COLLECTIONS).filter((k) => COLLECTIONS[k].hasFlipb
       const booklet = booklets[idx];
       if (!booklet) throw new Error('Flipbook not found.');
       const newFiles = req.files?.morePages || [];
-      if (newFiles.length === 0) throw new Error('Choose at least one page image.');
+      const picked = pickedPages(req.body);
+      if (!newFiles.length && !picked.length) throw new Error('Choose at least one page image.');
 
       const publicDir = booklet.pages.length ? siteDirOf(booklet.pages[0]) : `media/${key}/${slug}/flipbook-${Date.now()}`;
-      const added = placeMultiple(newFiles, { publicDir, prefix: 'page' });
+      const added = placePages(publicDir, newFiles, picked);
       booklets[idx] = { ...booklet, pages: [...booklet.pages, ...added] };
       updateEntry(key, slug, {}, { booklets });
       publish();
