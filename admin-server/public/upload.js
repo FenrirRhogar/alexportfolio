@@ -7,7 +7,9 @@
 (() => {
   const MAX_EDGE = 2560; // px on the long side — plenty for a full-screen view
   const RESIZABLE = ['image/jpeg', 'image/webp'];
-  const CLOUDFLARE_LIMIT = 95 * 1024 * 1024; // Cloudflare rejects requests over 100MB
+  const CLOUDFLARE_LIMIT = 90 * 1024 * 1024; // Cloudflare rejects requests over 100MB
+  const MAX_FILE = 300 * 1024 * 1024; // matches MAX_FILE_MB in lib/upload.mjs
+  const PIECE = 32 * 1024 * 1024; // files bigger than this go ahead of the form, in pieces this size
 
   async function shrink(file) {
     if (!RESIZABLE.includes(file.type)) return file;
@@ -61,6 +63,42 @@
 
   const mb = (n) => `${(n / 1024 / 1024).toFixed(1)} MB`;
 
+  function post(url, body, type, onProgress) {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', url);
+      xhr.setRequestHeader('Content-Type', type);
+      xhr.upload.addEventListener('progress', (ev) => onProgress?.(ev.loaded));
+      xhr.addEventListener('load', () => {
+        let reply = null;
+        try {
+          reply = JSON.parse(xhr.responseText);
+        } catch {
+          // not from the dashboard itself
+        }
+        if (xhr.status === 200 && reply && !reply.error) resolve(reply);
+        else reject(new Error(reply?.error || `Something went wrong (error ${xhr.status}). Please try again.`));
+      });
+      xhr.addEventListener('error', () => reject(new Error('The connection dropped. Check your internet and try again.')));
+      xhr.send(body);
+    });
+  }
+
+  /** Sends one big file in pieces; returns the id the form then refers to. */
+  async function sendInPieces(field, file, onProgress) {
+    const count = Math.ceil(file.size / PIECE);
+    const { id } = await post(
+      '/admin/pieces',
+      JSON.stringify({ field, name: file.name, type: file.type, size: file.size, count }),
+      'application/json',
+    );
+    for (let i = 0; i < count; i++) {
+      const start = i * PIECE;
+      await post(`/admin/pieces/${id}/${i}`, file.slice(start, start + PIECE), 'application/octet-stream', (n) => onProgress(start + n));
+    }
+    return id;
+  }
+
   document.addEventListener('submit', async (e) => {
     const form = e.target;
     if (!(form instanceof HTMLFormElement) || form.enctype !== 'multipart/form-data' || e.defaultPrevented) return;
@@ -95,10 +133,40 @@
       }
     }
 
+    // a file input with any big file sends all of its files in pieces, so
+    // they stay in the order they were chosen (e.g. flipbook pages)
+    const pieced = [];
+    for (const input of fileInputs) {
+      const files = data.getAll(input.name).filter((v) => v instanceof File);
+      const tooBig = files.find((f) => f.size > MAX_FILE);
+      if (tooBig) {
+        ui.fail(`${tooBig.name} is ${mb(tooBig.size)} — the limit is ${mb(MAX_FILE).replace('.0', '')} per file.`);
+        return;
+      }
+      if (files.some((f) => f.size > PIECE)) {
+        data.delete(input.name);
+        pieced.push(...files.map((file) => ({ field: input.name, file })));
+      }
+    }
+
     let size = 0;
     for (const [, v] of data) if (v instanceof File) size += v.size;
     if (size > CLOUDFLARE_LIMIT) {
-      ui.fail(`That's ${mb(size)} in one go — the limit is 100 MB. Upload fewer files at a time.`);
+      ui.fail(`That's ${mb(size)} in one go — the limit is 90 MB unless a single file is big. Upload fewer files at a time.`);
+      return;
+    }
+
+    // overall progress across the pieces and the form itself
+    const grand = size + pieced.reduce((n, p) => n + p.file.size, 0);
+    let sent = 0;
+    const progress = (n) => ui.set('Uploading…', (sent + n) / grand, `${mb(sent + n)} of ${mb(grand)}`);
+    try {
+      for (const { field, file } of pieced) {
+        data.append('_chunked', await sendInPieces(field, file, progress));
+        sent += file.size;
+      }
+    } catch (err) {
+      ui.fail(err.message);
       return;
     }
 
@@ -106,7 +174,7 @@
     xhr.open('POST', form.action || location.href);
     xhr.setRequestHeader('X-Requested-With', 'upload');
     xhr.upload.addEventListener('progress', (ev) => {
-      if (ev.lengthComputable) ui.set('Uploading…', ev.loaded / ev.total, `${mb(ev.loaded)} of ${mb(ev.total)}`);
+      if (ev.lengthComputable) progress((ev.loaded / ev.total) * size);
     });
     xhr.upload.addEventListener('load', () => ui.set('Saving…', null, 'Almost done'));
     xhr.addEventListener('load', () => {

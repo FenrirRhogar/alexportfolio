@@ -1,5 +1,6 @@
 import multer from 'multer';
-import { mkdirSync, readdirSync, unlinkSync, existsSync, copyFileSync, rmSync, readFileSync } from 'node:fs';
+import { mkdirSync, readdirSync, unlinkSync, existsSync, copyFileSync, rmSync, readFileSync, appendFileSync, statSync } from 'node:fs';
+import { randomBytes } from 'node:crypto';
 import { join, dirname } from 'node:path';
 import { imageSize } from 'image-size';
 import { SITE_REPO } from './content.mjs';
@@ -34,7 +35,7 @@ mkdirSync(TMP_DIR, { recursive: true });
  * user — never the raw error (which can include internal file paths). */
 export function friendlyUploadError(err) {
   if (err instanceof multer.MulterError) {
-    if (err.code === 'LIMIT_FILE_SIZE') return 'That file is too large (500MB max).';
+    if (err.code === 'LIMIT_FILE_SIZE') return `That file is too large (${MAX_FILE_MB} MB max).`;
     return 'There was a problem with that upload.';
   }
   // fileFilter throws plain Errors with messages we wrote ourselves above —
@@ -42,22 +43,124 @@ export function friendlyUploadError(err) {
   return err?.message && err.message.length < 200 ? err.message : 'There was a problem with that upload.';
 }
 
-export const upload = multer({
+export const MAX_FILE_MB = 300;
+const MAX_FILE_BYTES = MAX_FILE_MB * 1024 * 1024;
+
+/** The same type rules multer applies, for files that arrive in pieces too. */
+function checkFileType(fieldname, mimetype) {
+  // page images must be real images; a flipbook's optional source file
+  // is the one upload field allowed to be a PDF instead
+  const isPdfField = fieldname === 'newBookletPdf' || fieldname === 'bookletPdf';
+  if (isPdfField) {
+    if (mimetype !== PDF_MIME) throw new Error('That file must be a PDF.');
+    return;
+  }
+  // the media library takes anything the site can show, PDFs included
+  if (fieldname === 'libraryFiles' && mimetype === PDF_MIME) return;
+  if (!MIME_EXTENSIONS[mimetype]) throw new Error('Unsupported file type — use JPG, PNG, WEBP, GIF, AVIF, MP4, or WEBM.');
+}
+
+const multerUpload = multer({
   dest: TMP_DIR,
-  limits: { fileSize: 500 * 1024 * 1024 }, // 500MB — generous for video
+  limits: { fileSize: MAX_FILE_BYTES },
   fileFilter(req, file, cb) {
-    // page images must be real images; a flipbook's optional source file
-    // is the one upload field allowed to be a PDF instead
-    const isPdfField = file.fieldname === 'newBookletPdf' || file.fieldname === 'bookletPdf';
-    if (isPdfField) {
-      return file.mimetype === PDF_MIME ? cb(null, true) : cb(new Error('That file must be a PDF.'));
+    try {
+      checkFileType(file.fieldname, file.mimetype);
+      cb(null, true);
+    } catch (err) {
+      cb(err);
     }
-    // the media library takes anything the site can show, PDFs included
-    if (file.fieldname === 'libraryFiles' && file.mimetype === PDF_MIME) return cb(null, true);
-    if (MIME_EXTENSIONS[file.mimetype]) return cb(null, true);
-    cb(new Error('Unsupported file type — use JPG, PNG, WEBP, GIF, AVIF, MP4, or WEBM.'));
   },
 });
+
+// ---------- files sent in pieces ----------
+// Cloudflare refuses any single request over 100MB, so upload.js sends big
+// files (videos) ahead of the form in smaller pieces, each appended to a
+// temp file here. The form then carries only the piece-upload's id in a
+// "_chunked" field, and the middleware below turns it back into an
+// ordinary req.files entry — so route handlers can't tell the difference.
+
+const pieces = new Map(); // id -> { path, field, name, type, size, next, count, done, touched }
+const ID_RE = /^[a-f0-9]{32}$/;
+
+export function startPieces({ field, name, type, count, size }) {
+  count = Number(count);
+  size = Number(size);
+  if (!Number.isInteger(count) || count < 1 || count > 100) throw new Error('There was a problem with that upload.');
+  if (!Number.isFinite(size) || size > MAX_FILE_BYTES) throw new Error(`That file is too large (${MAX_FILE_MB} MB max).`);
+  checkFileType(String(field), String(type));
+  const id = randomBytes(16).toString('hex');
+  const path = join(TMP_DIR, `pieces-${id}`);
+  pieces.set(id, { path, field: String(field), name: String(name || 'file').slice(0, 200), type: String(type), size, next: 0, count, done: false, touched: Date.now() });
+  return id;
+}
+
+export function addPiece(id, index, buffer) {
+  const p = ID_RE.test(id) && pieces.get(id);
+  if (!p || p.done || Number(index) !== p.next) throw new Error('That upload got out of step. Please try again.');
+  if ((existsSync(p.path) ? statSync(p.path).size : 0) + buffer.length > MAX_FILE_BYTES) {
+    discardPieces(id);
+    throw new Error(`That file is too large (${MAX_FILE_MB} MB max).`);
+  }
+  appendFileSync(p.path, buffer);
+  p.next += 1;
+  p.touched = Date.now();
+  if (p.next === p.count) p.done = true;
+}
+
+function discardPieces(id) {
+  const p = pieces.get(id);
+  pieces.delete(id);
+  if (p) rmSync(p.path, { force: true });
+}
+
+// half-finished or never-submitted piece uploads are dropped after a few hours
+setInterval(() => {
+  for (const [id, p] of pieces) if (Date.now() - p.touched > 6 * 60 * 60 * 1000) discardPieces(id);
+}, 30 * 60 * 1000).unref();
+for (const f of readdirSync(TMP_DIR)) if (f.startsWith('pieces-')) rmSync(join(TMP_DIR, f), { force: true });
+
+/** Adds finished piece uploads named in req.body._chunked to req.files,
+ * in the shape multer itself produces (`asArray` for upload.array). */
+function attachPieces(allowed, asArray) {
+  return (req, res, next) => {
+    const ids = [].concat(req.body?._chunked ?? []);
+    delete req.body?._chunked;
+    try {
+      for (const id of ids) {
+        const p = ID_RE.test(id) && pieces.get(id);
+        if (!p || !p.done) throw new Error('Part of that upload never arrived. Please try again.');
+        const max = allowed[p.field];
+        if (!max) throw new Error('There was a problem with that upload.');
+        const file = { fieldname: p.field, originalname: p.name, mimetype: p.type, path: p.path, size: statSync(p.path).size };
+        pieces.delete(id);
+        if (asArray) {
+          req.files = req.files || [];
+          if (req.files.length >= max) throw new Error('Too many files in one go.');
+          req.files.push(file);
+        } else {
+          req.files = req.files || {};
+          const list = (req.files[p.field] = req.files[p.field] || []);
+          if (list.length >= max) throw new Error('Too many files in one go.');
+          list.push(file);
+        }
+      }
+      next();
+    } catch (err) {
+      for (const id of ids) discardPieces(id);
+      next(err);
+    }
+  };
+}
+
+// same calls as multer's own (.array / .fields), plus piece-upload support
+export const upload = {
+  array: (name, maxCount) => [multerUpload.array(name, maxCount), attachPieces({ [name]: maxCount }, true)],
+  fields: (spec) => [
+    multerUpload.fields(spec),
+    attachPieces(Object.fromEntries(spec.map((f) => [f.name, f.maxCount ?? Infinity])), false),
+  ],
+};
 
 /** Removes any existing `<basename>.*` in `dir`, so replacing e.g. a .jpg
  * cover with a .png doesn't leave the old file behind. */

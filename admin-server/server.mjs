@@ -32,6 +32,8 @@ import {
   deleteEntryMedia,
   siteDirOf,
   friendlyUploadError,
+  startPieces,
+  addPiece,
 } from './lib/upload.mjs';
 import { requestBuild, buildStatus } from './lib/build.mjs';
 
@@ -238,6 +240,31 @@ admin.get('/', requireAuth, (req, res) => {
     flash: flash(req),
   });
 });
+
+// ---------- big files, sent in pieces by upload.js (see lib/upload.mjs) ----------
+
+admin.post('/pieces', requireAuth, (req, res) => {
+  try {
+    res.json({ id: startPieces(req.body || {}) });
+  } catch (err) {
+    res.status(400).json({ error: friendlyUploadError(err) });
+  }
+});
+
+admin.post(
+  '/pieces/:id/:index',
+  requireAuth,
+  express.raw({ type: 'application/octet-stream', limit: '40mb' }),
+  (req, res) => {
+    try {
+      if (!Buffer.isBuffer(req.body) || !req.body.length) throw new Error('There was a problem with that upload.');
+      addPiece(req.params.id, req.params.index, req.body);
+      res.json({ ok: true });
+    } catch (err) {
+      res.status(400).json({ error: friendlyUploadError(err) });
+    }
+  },
+);
 
 // ---------- media library: every file under public/media ----------
 
