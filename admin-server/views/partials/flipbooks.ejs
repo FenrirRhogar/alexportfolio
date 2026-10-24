@@ -2,7 +2,7 @@
     <section class="flipbooks-section" id="flipbooks">
       <div class="section-heading">
         <h2>📖 Flipbooks</h2>
-        <p class="hint">A set of page images shown as a flip-through book on the project page. Drag pages to reorder them.</p>
+        <p class="hint">A set of page images shown as a flip-through book on the project page. Drag pages to reorder them (on a phone or tablet, press and hold a page first), or use ‹ › to move a page one place. The new order saves by itself.</p>
       </div>
 
       <% (entry.data.booklets || []).forEach((b, i) => { %>
@@ -28,10 +28,16 @@
             </form>
           </div>
 
+          <p class="reorder-status muted" aria-live="polite"></p>
           <ul class="page-grid reorder-pages" data-endpoint="/admin/<%= schema.key %>/<%= entry.slug %>/booklets/<%= i %>/reorder-pages">
             <% b.pages.forEach((p) => { %>
-              <li class="page-thumb" draggable="true" data-src="<%= p %>">
-                <img src="<%= p %>" alt="" loading="lazy" />
+              <li class="page-thumb" data-src="<%= p %>">
+                <img src="<%= p %>" alt="" loading="lazy" draggable="false" />
+                <span class="page-num"></span>
+                <span class="page-move">
+                  <button type="button" class="page-step" data-step="-1" title="Move one place earlier" aria-label="Move earlier">‹</button>
+                  <button type="button" class="page-step" data-step="1" title="Move one place later" aria-label="Move later">›</button>
+                </span>
                 <form method="post" action="/admin/<%= schema.key %>/<%= entry.slug %>/booklets/<%= i %>/delete-page"
                       data-confirm="Remove this page?">
                   <input type="hidden" name="page" value="<%= p %>" />
@@ -140,5 +146,6 @@
       </div>
     </section>
 
+    <script src="/admin/vendor/Sortable.min.js"></script>
     <script src="/admin/flipbook-reorder.js"></script>
 <% } %>

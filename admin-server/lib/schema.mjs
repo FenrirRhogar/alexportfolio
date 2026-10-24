@@ -65,7 +65,7 @@ export const COLLECTIONS = {
       { name: 'featured', label: 'Feature on homepage', type: 'checkbox' },
     ],
     poster: { name: 'poster', label: 'Poster image', kind: 'image' },
-    video: { name: 'video', label: 'Video (mp4)', kind: 'video' },
+    video: { name: 'video', label: 'Video (mp4 or mov)', kind: 'video' },
     videoWebm: { name: 'videoWebm', label: 'Video (webm, optional)', kind: 'video', optional: true },
   },
   fineart: {

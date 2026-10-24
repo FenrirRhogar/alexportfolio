@@ -12,6 +12,8 @@
   const PIECE = 32 * 1024 * 1024; // files bigger than this go ahead of the form, in pieces this size
 
   async function shrink(file) {
+    // some browsers don't know .mov's type — the server goes by type, not name
+    if (!file.type && /\.mov$/i.test(file.name)) return new File([file], file.name, { type: 'video/quicktime' });
     if (!RESIZABLE.includes(file.type)) return file;
     const url = URL.createObjectURL(file);
     try {

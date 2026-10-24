@@ -24,6 +24,11 @@
       <a href="/admin/media">🗂️ Media</a>
     </nav>
     <a href="/" class="view-site-link" target="_blank" rel="noopener">View site ↗</a>
+    <% if (conversion.converting) { %>
+      <span class="build-note" title="Uploaded .mov videos are being turned into .mp4 — they show up on the site when that's done">🎞 Converting <%= conversion.converting %> video<%= conversion.converting === 1 ? '' : 's' %>…</span>
+    <% } else if (conversion.error) { %>
+      <span class="build-note error"><%= conversion.error %></span>
+    <% } %>
     <form method="post" action="/admin/rebuild" class="logout-form" title="<%= build.state === 'failed' ? 'Last rebuild failed: ' + build.error : 'Rebuild the public site now' %>">
       <button type="submit"><%= build.state === 'building' ? 'Publishing…' : build.state === 'failed' ? '⚠ Publish failed — retry' : 'Republish' %></button>
     </form>

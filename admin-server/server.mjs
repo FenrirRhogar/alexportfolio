@@ -36,6 +36,7 @@ import {
   addPiece,
 } from './lib/upload.mjs';
 import { requestBuild, buildStatus } from './lib/build.mjs';
+import { conversionStatus } from './lib/video.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3000;
@@ -111,6 +112,8 @@ admin.use(
 );
 
 admin.use(express.static(join(__dirname, 'public')));
+// drag-and-drop for flipbook pages (public/flipbook-reorder.js)
+admin.get('/vendor/Sortable.min.js', (req, res) => res.sendFile(join(__dirname, 'node_modules', 'sortablejs', 'Sortable.min.js')));
 admin.use(express.urlencoded({ extended: true }));
 admin.use(express.json());
 
@@ -167,6 +170,7 @@ function homepageSelection() {
 // the header shows whether the last rebuild of the public site went through
 admin.use((req, res, next) => {
   res.locals.build = buildStatus();
+  res.locals.conversion = conversionStatus();
   res.locals.accessEmail = req.accessEmail;
   res.locals.sizeOptions = SIZE_OPTIONS;
   next();

@@ -2,7 +2,8 @@ import { readdirSync, readFileSync, statSync, existsSync, mkdirSync, copyFileSyn
 import { join, relative, resolve, sep, extname } from 'node:path';
 import { imageSize } from 'image-size';
 import { SITE_REPO } from './content.mjs';
-import { MIME_EXTENSIONS, PDF_MIME } from './upload.mjs';
+import { MIME_EXTENSIONS, PDF_MIME, storeFile } from './upload.mjs';
+import { isConverting } from './video.mjs';
 
 // Everything the media library touches lives under public/media/ — every
 // path coming in from a request is resolved and checked against this root
@@ -107,9 +108,9 @@ export function placeLibraryUploads(tmpFiles, folder, newSubfolder) {
     if (!ext) throw new Error(`Unsupported file type: ${file.mimetype}`);
     const base = safeSegment(file.originalname.replace(/\.[^.]*$/, '')) || 'file';
     let name = `${base}${ext}`;
-    for (let n = 2; existsSync(join(dir, name)); n += 1) name = `${base}-${n}${ext}`;
-    copyFileSync(file.path, join(dir, name));
-    unlinkSync(file.path);
+    const taken = (n) => existsSync(join(dir, n)) || isConverting(join(dir, n));
+    for (let n = 2; taken(name); n += 1) name = `${base}-${n}${ext}`;
+    storeFile(file, join(dir, name));
     return '/' + relative(PUBLIC_DIR, join(dir, name)).split(sep).join('/');
   });
 }

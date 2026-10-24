@@ -4,6 +4,7 @@ import { randomBytes } from 'node:crypto';
 import { join, dirname } from 'node:path';
 import { imageSize } from 'image-size';
 import { SITE_REPO } from './content.mjs';
+import { convertToMp4 } from './video.mjs';
 
 // The only file types this app will ever write to disk, and the exact
 // extension each gets — deliberately NOT derived from the uploaded file's
@@ -22,6 +23,7 @@ export const MIME_EXTENSIONS = {
   'image/avif': '.avif',
   'video/mp4': '.mp4',
   'video/webm': '.webm',
+  'video/quicktime': '.mp4', // .mov — converted to .mp4, see lib/video.mjs
 };
 export const PDF_MIME = 'application/pdf';
 
@@ -57,7 +59,7 @@ function checkFileType(fieldname, mimetype) {
   }
   // the media library takes anything the site can show, PDFs included
   if (fieldname === 'libraryFiles' && mimetype === PDF_MIME) return;
-  if (!MIME_EXTENSIONS[mimetype]) throw new Error('Unsupported file type — use JPG, PNG, WEBP, GIF, AVIF, MP4, or WEBM.');
+  if (!MIME_EXTENSIONS[mimetype]) throw new Error('Unsupported file type — use JPG, PNG, WEBP, GIF, AVIF, MP4, MOV, or WEBM.');
 }
 
 const multerUpload = multer({
@@ -186,11 +188,16 @@ export function placeUpload(tmpFile, { publicDir, baseName }) {
   mkdirSync(fsDir, { recursive: true });
   clearExisting(fsDir, baseName);
 
-  const destFs = join(fsDir, `${baseName}${ext}`);
+  storeFile(tmpFile, join(fsDir, `${baseName}${ext}`));
+  return `/${publicDir}/${baseName}${ext}`;
+}
+
+/** Moves an uploaded temp file to `destFs` — or, for a .mov, queues its
+ * conversion to the .mp4 at `destFs`, which appears once it's done. */
+export function storeFile(tmpFile, destFs) {
+  if (tmpFile.mimetype === 'video/quicktime') return convertToMp4(tmpFile.path, destFs);
   copyFileSync(tmpFile.path, destFs);
   unlinkSync(tmpFile.path);
-
-  return `/${publicDir}/${baseName}${ext}`;
 }
 
 /** Moves a batch of uploaded files into the same publicDir, named
